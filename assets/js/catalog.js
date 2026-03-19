@@ -116,7 +116,7 @@ const ElChefeCatalog = (() => {
 
     // Imagem
     const imgHTML = product.image
-      ? `<img class="product-card__img" src="${product.image}" alt="${esc(product.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;product-card__img-placeholder&quot;>${product.emoji}</div>'" />`
+      ? `<img class="product-card__img" src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=&quot;product-card__img-placeholder&quot;>${product.emoji}</div>'" />`
       : `<div class="product-card__img-placeholder">${product.emoji}</div>`;
 
     // Preço
