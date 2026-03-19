@@ -38,4 +38,7 @@ window.ElChefeConfig = {
   // TODO: substitua pelo número real (DDI + DDD + número, sem espaços)
   WHATSAPP_NUMBER: '5542999959547',
 
+  // ── ImgBB (hospedagem de imagens para o painel admin) ────
+  IMGBB_API_KEY: 'c989aa37bfd4a3680b312c2237a27a88',
+
 };

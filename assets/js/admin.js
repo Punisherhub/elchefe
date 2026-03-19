@@ -576,7 +576,7 @@ const ElChefeAdmin = (() => {
     }).join('');
   }
 
-  function handlePdvImageFile(file, productId) {
+  async function handlePdvImageFile(file, productId) {
     if (!file || !file.type.startsWith('image/')) {
       showToast('Arquivo inválido. Use JPG, PNG ou WebP.', 'error');
       return;
@@ -585,14 +585,39 @@ const ElChefeAdmin = (() => {
       showToast('Imagem muito grande (máx 4 MB).', 'error');
       return;
     }
+
+    showToast('Enviando imagem...');
+
     const reader = new FileReader();
-    reader.onload = e => resizeImage(e.target.result, 640, dataUrl => {
-      const map = loadPdvImageMap();
-      map[String(productId)] = dataUrl;
-      savePdvImageMap(map);
-      renderPdvImageGrid();
-      showToast('Imagem salva!');
-    });
+    reader.onload = async e => {
+      const base64 = e.target.result.split(',')[1];
+      const apiKey = window.ElChefeConfig?.IMGBB_API_KEY;
+
+      if (!apiKey) {
+        showToast('IMGBB_API_KEY não configurada.', 'error');
+        return;
+      }
+
+      try {
+        const form = new FormData();
+        form.append('key', apiKey);
+        form.append('image', base64);
+
+        const res  = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form });
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error?.message ?? 'Erro desconhecido');
+
+        const url = json.data.url;
+        const map = loadPdvImageMap();
+        map[String(productId)] = url;
+        savePdvImageMap(map);
+        renderPdvImageGrid();
+        showToast('Imagem salva!');
+      } catch (err) {
+        showToast(`Falha no upload: ${err.message}`, 'error');
+      }
+    };
     reader.readAsDataURL(file);
   }
 
