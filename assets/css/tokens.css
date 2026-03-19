@@ -1,0 +1,90 @@
+/* ============================================================
+   DESIGN TOKENS — El Chefe
+   Noir Premium — Branco, Preto e Vermelho
+   Paleta extraída das logos oficiais da marca
+   ============================================================ */
+
+:root {
+  /* Cores principais — Light/Branco */
+  --color-bg:           #ffffff;
+  --color-surface:      #f7f7f7;
+  --color-surface-2:    #f0f0f0;
+  --color-surface-3:    #e8e8e8;
+  --color-border:       #e0e0e0;
+  --color-border-light: #ebebeb;
+
+  /* Cores de brand — Vermelho da marca */
+  --color-red:          #c41e3a;   /* vermelho principal das logos */
+  --color-red-light:    #e8314f;   /* hover / destaque */
+  --color-red-dark:     #8b1a1a;   /* bordô / profundidade */
+  --color-red-bg:       #fdf2f4;   /* fundo suave vermelho */
+  --color-black:        #111111;   /* preto das logos */
+  --color-green:        #1a9c3e;
+  --color-whatsapp:     #25d366;
+
+  /* Texto */
+  --color-text-primary:   #111111;
+  --color-text-secondary: #444444;
+  --color-text-muted:     #888888;
+  --color-text-inverse:   #ffffff;
+
+  /* Tipografia */
+  --font-display:  'Barlow Condensed', sans-serif;
+  --font-body:     'Inter', sans-serif;
+
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+  --text-4xl:  2.25rem;
+  --text-5xl:  3rem;
+  --text-hero: clamp(3.5rem, 10vw, 7rem);
+
+  /* Espaçamento */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* Bordas */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.13);
+  --shadow-red: 0 4px 20px rgba(196,30,58,0.22);
+
+  /* Transições */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* Z-index */
+  --z-header:  100;
+  --z-drawer:  200;
+  --z-modal:   300;
+  --z-toast:   400;
+
+  /* Layout */
+  --container-max: 1280px;
+  --container-px:  clamp(1rem, 4vw, 2rem);
+
+  /* Header */
+  --header-height: 90px;
+}

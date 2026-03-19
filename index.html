@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ===================== SEO BÁSICO ===================== -->
+  <title>El Chefe | Conveniência &amp; Tabacaria — Ponta Grossa</title>
+  <meta name="description" content="El Chefe Conveniência &amp; Tabacaria em Ponta Grossa, PR. Bebidas geladas, destilados, cervejas, vinhos e tabacaria completa. Peça online com entrega rápida na sua porta." />
+  <meta name="keywords" content="conveniência ponta grossa, tabacaria ponta grossa, bebidas delivery, destilados ponta grossa, whisky, cerveja, vinho, narguilé, entrega bebidas" />
+  <meta name="author" content="El Chefe Conveniência &amp; Tabacaria" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- URL canônica — substitua pelo domínio real após o deploy -->
+  <link rel="canonical" href="https://elchefe.com.br/" />
+
+  <!-- ===================== OPEN GRAPH (WhatsApp, Facebook) ===================== -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:locale"      content="pt_BR" />
+  <meta property="og:site_name"   content="El Chefe Conveniência &amp; Tabacaria" />
+  <meta property="og:title"       content="El Chefe | Conveniência &amp; Tabacaria" />
+  <meta property="og:description" content="Bebidas geladas, destilados selecionados e tabacaria completa em Ponta Grossa, PR. Entregamos na sua porta com agilidade. Peça agora!" />
+  <!-- Imagem exibida ao compartilhar o link no WhatsApp/redes (1200x630 ideal) -->
+  <meta property="og:image"       content="https://elchefe.com.br/assets/img/LogoBrancoVermelho.jpeg" />
+  <meta property="og:image:alt"   content="El Chefe — Conveniência &amp; Tabacaria" />
+  <meta property="og:image:width"  content="1600" />
+  <meta property="og:image:height" content="1600" />
+  <meta property="og:url"         content="https://elchefe.com.br/" />
+
+  <!-- ===================== TWITTER CARD ===================== -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="El Chefe | Conveniência &amp; Tabacaria" />
+  <meta name="twitter:description" content="Bebidas, destilados e tabacaria em Ponta Grossa, PR. Entrega rápida na sua porta." />
+  <meta name="twitter:image"       content="https://elchefe.com.br/assets/img/LogoBrancoVermelho.jpeg" />
+
+  <!-- ===================== FAVICON ===================== -->
+  <!-- Favicon padrão (navegadores modernos aceitam JPEG) -->
+  <link rel="icon" type="image/jpeg" href="assets/img/LogoPequena.jpeg" />
+  <!-- Ícone para iOS (tela inicial do iPhone/iPad) -->
+  <link rel="apple-touch-icon" href="assets/img/LogoPequena.jpeg" />
+  <!-- Cor da barra do navegador mobile (Android Chrome) -->
+  <meta name="theme-color" content="#c41e3a" />
+  <!-- Cor da barra de status no iOS -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="El Chefe" />
+
+  <!-- ===================== GEO (SEO local) ===================== -->
+  <meta name="geo.region"      content="BR-PR" />
+  <meta name="geo.placename"   content="Ponta Grossa" />
+  <meta name="geo.position"    content="-25.0952;-50.1622" />
+  <meta name="ICBM"            content="-25.0952, -50.1622" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="assets/css/reset.css" />
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/layout.css" />
+  <link rel="stylesheet" href="assets/css/components.css" />
+  <link rel="stylesheet" href="assets/css/cart.css" />
+  <link rel="stylesheet" href="assets/css/checkout.css" />
+</head>
+<body class="page-body">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+
+      <!-- Logo horizontal preta/branca: fundo branco = fundo do header -->
+      <a href="/" class="header__logo" aria-label="El Chefe - Página Inicial">
+        <img
+          class="header__logo-img"
+          src="assets/img/LogoPretoBranco.jpeg"
+          alt="El Chefe — Conveniência &amp; Tabacaria"
+          width="220"
+          height="90"
+        />
+      </a>
+
+      <nav class="header__nav" aria-label="Navegação principal">
+        <a href="#produtos" class="nav__link">Produtos</a>
+        <a href="#sobre" class="nav__link">Sobre</a>
+        <a href="#contato" class="nav__link">Contato</a>
+      </nav>
+
+      <button
+        class="cart-trigger"
+        id="cart-trigger"
+        aria-label="Abrir carrinho"
+        aria-expanded="false"
+        aria-controls="cart-drawer"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        <span class="cart-trigger__badge" id="cart-badge" aria-live="polite">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero__bg"></div>
+
+    <div class="hero__content">
+      <!-- Logo vermelha — destaque visual principal -->
+      <div class="hero__logo-wrap">
+        <img
+          class="hero__logo-img"
+          src="assets/img/LogoVermelho.jpeg"
+          alt="El Chefe — Conveniência &amp; Tabacaria"
+          width="480"
+          height="220"
+        />
+      </div>
+
+      <!-- Texto e CTA -->
+      <div class="hero__text">
+        <span class="hero__eyebrow">Ponta Grossa, PR</span>
+
+        <h1 id="hero-title" class="hero__title">
+          BEBIDAS &<br/>TABACARIA<br/>
+        </h1>
+
+        <p class="hero__subtitle">
+          Estoque selecionado, entrega rápida na sua porta. Peça agora e receba hoje.
+        </p>
+
+        <div class="hero__cta">
+          <a href="#produtos" class="btn btn--primary btn--lg">Ver Produtos</a>
+          <a href="https://wa.me/5542999959547" class="btn btn--outline btn--lg" target="_blank" rel="noopener">
+            WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ===================== BANNER DE PROMOÇÕES ===================== -->
+  <section class="promo-banner" id="promo-banner" aria-label="Promoções em destaque">
+    <div class="container">
+      <div class="promo-banner__header">
+        <h2 class="section-title">
+          <span class="section-title__accent" aria-hidden="true">🔥</span> Promoções
+        </h2>
+      </div>
+      <div class="products-grid" id="promo-grid" role="list" aria-label="Produtos em promoção">
+        <!-- Injetado via JS / Webflow CMS -->
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- ===================== CATÁLOGO DE PRODUTOS ===================== -->
+  <section class="catalog" id="produtos" aria-labelledby="catalog-title">
+    <div class="container">
+      <h2 id="catalog-title" class="section-title">Nosso Catálogo</h2>
+
+      <!-- Filtros de Categoria -->
+      <nav class="filter-bar" aria-label="Filtrar por categoria" role="tablist">
+        <button class="filter-btn filter-btn--active" data-filter="all"       role="tab" aria-selected="true"  aria-controls="products-panel">Todos</button>
+        <button class="filter-btn"                    data-filter="bebidas"    role="tab" aria-selected="false">Bebidas</button>
+        <button class="filter-btn"                    data-filter="destilados" role="tab" aria-selected="false">Destilados</button>
+        <button class="filter-btn"                    data-filter="cervejas"   role="tab" aria-selected="false">Cervejas</button>
+        <button class="filter-btn"                    data-filter="vinhos"     role="tab" aria-selected="false">Vinhos</button>
+        <button class="filter-btn"                    data-filter="tabacaria"  role="tab" aria-selected="false">Tabacaria</button>
+        <button class="filter-btn"                    data-filter="snacks"     role="tab" aria-selected="false">Snacks</button>
+      </nav>
+
+      <!-- Grid de Produtos -->
+      <div
+        class="products-grid"
+        id="products-grid"
+        role="tabpanel"
+        id="products-panel"
+        aria-label="Lista de produtos"
+      ></div>
+
+      <div class="empty-state" id="empty-state" hidden>
+        <p>Nenhum produto encontrado nesta categoria.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SOBRE ===================== -->
+  <section class="about" id="sobre" aria-labelledby="about-title">
+    <div class="container about__inner">
+
+      <!-- Logo pequena/circular sobre fundo preto -->
+      <div class="about__logo-wrap">
+        <img
+          class="about__logo-img"
+          src="assets/img/LogoPequena.jpeg"
+          alt="El Chefe — Logo"
+          width="200"
+          height="200"
+        />
+      </div>
+
+      <div class="about__text">
+        <h2 id="about-title" class="section-title">Sobre o El Chefe</h2>
+        <p>
+          Conveniência em Ponta Grossa. Bebidas geladas, destilados
+          selecionados e tabacaria completa. Atendemos com qualidade e entregamos
+          no seu endereço com agilidade.
+        </p>
+        <address class="about__address">
+          <strong>João Rabelo Coutinho, 2560</strong>
+          Ponta Grossa — PR
+        </address>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer" id="contato" aria-label="Rodapé e contato">
+    <div class="container footer__inner">
+
+      <div class="footer__brand">
+        <!-- Logo horizontal preta/branca: merge perfeito com fundo branco do footer -->
+        <img
+          class="footer__brand-img"
+          src="assets/img/LogoPretoBranco.jpeg"
+          alt="El Chefe"
+          width="160"
+          height="65"
+        />
+        <p>Conveniência & Tabacaria · Ponta Grossa, PR</p>
+      </div>
+
+      <div class="footer__contact">
+        <p>Dúvidas? Fale conosco pelo WhatsApp:</p>
+        <a href="https://wa.me/5542999959547" class="btn btn--whatsapp" target="_blank" rel="noopener">
+          Falar no WhatsApp
+        </a>
+      </div>
+    </div>
+
+    <div class="container">
+      <p class="footer__copy">© 2026 El Chefe Conveniência &amp; Tabacaria. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <!-- ===================== CART DRAWER ===================== -->
+  <aside
+    class="cart-drawer"
+    id="cart-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Carrinho de compras"
+    hidden
+  >
+    <div class="cart-drawer__overlay" id="cart-overlay"></div>
+    <div class="cart-drawer__panel">
+      <div class="cart-drawer__header">
+        <h2 class="cart-drawer__title">Carrinho</h2>
+        <button class="cart-drawer__close" id="cart-close" aria-label="Fechar carrinho">✕</button>
+      </div>
+
+      <div class="cart-drawer__body">
+        <ul class="cart-items" id="cart-items" aria-live="polite"></ul>
+        <div class="cart-empty" id="cart-empty">
+          <p>Seu carrinho está vazio.</p>
+          <a href="#produtos" class="btn btn--outline btn--sm">Ver Produtos</a>
+        </div>
+      </div>
+
+      <div class="cart-drawer__footer" id="cart-footer" hidden>
+        <div class="cart-summary">
+          <div class="cart-summary__row">
+            <span>Subtotal</span>
+            <span id="cart-subtotal">R$ 0,00</span>
+          </div>
+          <div class="cart-summary__row cart-summary__row--shipping">
+            <span>Entrega</span>
+            <span id="cart-shipping-display">—</span>
+          </div>
+          <div class="cart-summary__row cart-summary__row--total">
+            <span><strong>Total</strong></span>
+            <span id="cart-total"><strong>R$ 0,00</strong></span>
+          </div>
+        </div>
+        <button class="btn btn--primary btn--full" id="btn-checkout">
+          Finalizar Pedido →
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MODAL CHECKOUT ===================== -->
+  <div
+    class="modal-overlay"
+    id="checkout-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="checkout-title"
+    hidden
+  >
+    <div class="modal">
+      <button class="modal__close" id="checkout-close" aria-label="Fechar">✕</button>
+
+      <!-- Step 1: Dados do Cliente -->
+      <section class="checkout-step" id="step-customer" data-step="1">
+        <h2 id="checkout-title" class="modal__title">Dados para Entrega</h2>
+        <form class="checkout-form" id="form-customer" novalidate>
+
+          <div class="form-group">
+            <label for="field-name">Nome completo *</label>
+            <input type="text" id="field-name" name="name" autocomplete="name" required placeholder="Seu nome completo" />
+            <span class="field-error" id="err-name"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="field-phone">WhatsApp *</label>
+            <input type="tel" id="field-phone" name="phone" autocomplete="tel" required placeholder="(42) 9 0000-0000" />
+            <span class="field-error" id="err-phone"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="field-cep">CEP *</label>
+            <div class="input-group">
+              <input type="text" id="field-cep" name="cep" maxlength="9" required placeholder="00000-000" inputmode="numeric" />
+              <button type="button" class="btn btn--outline btn--sm" id="btn-calc-shipping">
+                Calcular Frete
+              </button>
+            </div>
+            <span class="field-error" id="err-cep"></span>
+            <span class="field-info" id="info-cep"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="field-address">Endereço *</label>
+            <input type="text" id="field-address" name="address" autocomplete="street-address" required placeholder="Rua, número" />
+            <span class="field-error" id="err-address"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="field-complement">Complemento</label>
+            <input type="text" id="field-complement" name="complement" placeholder="Apto, bloco (opcional)" />
+          </div>
+
+          <div class="form-group">
+            <label for="field-notes">Observações</label>
+            <textarea id="field-notes" name="notes" rows="2" placeholder="Referência, instruções de entrega..."></textarea>
+          </div>
+
+          <!-- Resultado do frete -->
+          <div class="shipping-result" id="shipping-result" hidden>
+            <div class="shipping-result__box">
+              <span class="shipping-result__label">Taxa de Entrega</span>
+              <span class="shipping-result__value" id="shipping-value-display">—</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--full">
+            Continuar para Pagamento →
+          </button>
+        </form>
+      </section>
+
+      <!-- Step 2: Método de Pagamento -->
+      <section class="checkout-step" id="step-payment" data-step="2" hidden>
+        <h2 class="modal__title">Pagamento</h2>
+        <form class="checkout-form" id="form-payment" novalidate>
+          <fieldset class="payment-methods">
+            <legend>Como deseja pagar?</legend>
+
+            <label class="payment-option">
+              <input type="radio" name="payment" value="pix" checked />
+              <span class="payment-option__label">
+                <strong>PIX</strong>
+                <small>Confirmação instantânea</small>
+              </span>
+            </label>
+
+            <label class="payment-option">
+              <input type="radio" name="payment" value="dinheiro" />
+              <span class="payment-option__label">
+                <strong>Dinheiro</strong>
+                <small>Troco para quanto?</small>
+              </span>
+            </label>
+
+            <label class="payment-option">
+              <input type="radio" name="payment" value="cartao" />
+              <span class="payment-option__label">
+                <strong>Cartão na Entrega</strong>
+                <small>Débito ou crédito</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <div class="form-group" id="change-group" hidden>
+            <label for="field-change">Troco para</label>
+            <input type="number" id="field-change" name="change" min="0" step="0.01" placeholder="R$ 0,00" />
+          </div>
+
+          <button type="submit" class="btn btn--primary btn--full">
+            Confirmar Pedido ✓
+          </button>
+          <button type="button" class="btn btn--ghost btn--full" id="btn-back-customer">
+            ← Voltar
+          </button>
+        </form>
+      </section>
+
+      <!-- Step 3: Confirmação -->
+      <section class="checkout-step" id="step-confirm" data-step="3" hidden>
+        <div class="order-confirm">
+          <div class="order-confirm__icon">✅</div>
+          <h2 class="modal__title">Pedido Enviado!</h2>
+          <p id="confirm-msg">Recebemos seu pedido. Em breve entraremos em contato pelo WhatsApp.</p>
+          <div class="order-confirm__summary" id="confirm-summary"></div>
+          <a id="confirm-whatsapp" href="#" class="btn btn--whatsapp btn--full" target="_blank" rel="noopener">
+            Acompanhar pelo WhatsApp
+          </a>
+          <button class="btn btn--ghost btn--full" id="btn-new-order">
+            Fazer Novo Pedido
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===================== TOAST ===================== -->
+  <div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <!-- 1. Configuração central (API Key, URLs) -->
+  <script src="assets/js/config.js"></script>
+
+  <!-- 2. Dados locais — fallback quando PDV não está configurado -->
+  <script src="assets/js/products-data.js"></script>
+
+  <!-- 3. Utilitários -->
+  <script src="assets/js/utils.js"></script>
+
+  <!-- 4. Integração PDV OnSell (deve vir antes de catalog e checkout) -->
+  <script src="assets/js/pdv-api.js"></script>
+
+  <!-- 5. Módulos de negócio -->
+  <script src="assets/js/shipping.js"></script>
+  <script src="assets/js/cart.js"></script>
+  <script src="assets/js/catalog.js"></script>
+  <script src="assets/js/checkout.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

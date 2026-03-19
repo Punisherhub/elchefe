@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — El Chefe</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════
+       TELA DE LOGIN
+       ══════════════════════════════════════════════ -->
+  <div id="login-screen">
+    <div class="login-card">
+
+      <div class="login-brand">
+        <img
+          class="login-logo"
+          src="assets/img/LogoPretoBranco.jpeg"
+          alt="El Chefe"
+          width="140"
+          height="60"
+        >
+        <h1>Administração</h1>
+      </div>
+
+      <form id="login-form" novalidate>
+        <label for="login-pass">Senha</label>
+        <input
+          type="password"
+          id="login-pass"
+          autocomplete="current-password"
+          required
+          placeholder="Digite sua senha"
+        >
+        <p id="login-error" hidden class="login-error">Senha incorreta. Tente novamente.</p>
+        <button type="submit" id="login-btn" class="btn-primary btn-full">Entrar</button>
+      </form>
+
+      <a href="index.html" class="back-link">← Voltar à loja</a>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       PAINEL ADMIN
+       ══════════════════════════════════════════════ -->
+  <div id="admin-panel" hidden>
+
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="admin-header__brand">
+        <img
+          class="admin-logo"
+          src="assets/img/LogoPretoBranco.jpeg"
+          alt="El Chefe"
+          width="100"
+          height="42"
+        >
+        <span class="admin-title">Gerenciador de Produtos</span>
+      </div>
+      <div class="admin-header__actions">
+        <a href="index.html" class="btn-ghost" target="_blank" rel="noopener">🛍 Ver Loja</a>
+        <button id="btn-change-pass" class="btn-ghost">🔑 Senha</button>
+        <button id="btn-logout"      class="btn-ghost btn-danger">Sair</button>
+      </div>
+    </header>
+
+    <!-- Seção de alteração de senha (colapsável) -->
+    <div id="pass-section" class="pass-section" hidden>
+      <form id="pass-form" class="pass-form" novalidate>
+        <h3>Alterar Senha</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pass-current">Senha Atual</label>
+            <input type="password" id="pass-current" required autocomplete="current-password">
+          </div>
+          <div class="form-group">
+            <label for="pass-new">Nova Senha</label>
+            <input type="password" id="pass-new" required minlength="6" autocomplete="new-password">
+          </div>
+          <div class="form-group">
+            <label for="pass-confirm">Confirmar Nova Senha</label>
+            <input type="password" id="pass-confirm" required autocomplete="new-password">
+          </div>
+        </div>
+        <div class="pass-actions">
+          <button type="submit" class="btn-primary">Salvar Senha</button>
+          <button type="button" id="pass-cancel" class="btn-ghost">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabs de navegação -->
+    <nav class="admin-tabs" role="tablist">
+      <button class="tab-btn tab-btn--active" data-tab="produtos"    id="tab-produtos"    role="tab" aria-selected="true">Produtos</button>
+      <button class="tab-btn"                 data-tab="pdv-images"  id="tab-pdv-images"  role="tab" aria-selected="false">🖼 Imagens PDV</button>
+    </nav>
+
+    <!-- Conteúdo principal -->
+    <main class="admin-main">
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar__left">
+          <button id="btn-add" class="btn-primary">+ Novo Produto</button>
+          <span id="product-count" class="product-count"></span>
+        </div>
+        <div class="toolbar__right">
+          <input
+            type="search"
+            id="search-input"
+            class="search-input"
+            placeholder="Buscar produto..."
+            aria-label="Buscar produto"
+          >
+          <select id="cat-filter" class="cat-filter" aria-label="Filtrar por categoria">
+            <option value="all">Todas as categorias</option>
+          </select>
+          <button id="btn-export" class="btn-ghost" title="Exportar produtos como JSON">⬇ Exportar</button>
+          <button id="btn-import" class="btn-ghost" title="Importar produtos de um JSON">⬆ Importar</button>
+          <input type="file" id="import-file" accept=".json" hidden>
+        </div>
+      </div>
+
+      <!-- Tabela de produtos -->
+      <div class="table-wrap" role="region" aria-label="Lista de produtos">
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th class="th-img">Foto</th>
+              <th>Nome / Categoria</th>
+              <th>Descrição</th>
+              <th class="th-price">Preço</th>
+              <th class="th-stock">Estoque</th>
+              <th class="th-flags">Tags</th>
+              <th class="th-actions">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="product-table-body">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Seção: Imagens PDV -->
+      <section id="section-pdv-images" hidden>
+
+        <div class="pdv-img-header">
+          <div>
+            <h2>Imagens dos Produtos PDV</h2>
+            <p>Faça upload de fotos para cada produto cadastrado no PDV. As imagens ficam salvas neste navegador e aparecem automaticamente no catálogo da loja.</p>
+          </div>
+          <button id="btn-reload-pdv" class="btn-ghost">↺ Recarregar</button>
+        </div>
+
+        <div id="pdv-img-grid" class="pdv-img-grid">
+          <p class="pdv-img-loading">Carregando produtos do PDV...</p>
+        </div>
+
+        <!-- Input file oculto para upload nas cards -->
+        <input type="file" id="pdv-img-file-input" accept="image/jpeg,image/png,image/webp" hidden>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       MODAL — ADICIONAR / EDITAR PRODUTO
+       ══════════════════════════════════════════════ -->
+  <div
+    id="product-modal"
+    class="modal-overlay"
+    hidden
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+  >
+    <div class="modal-dialog">
+
+      <div class="modal-header">
+        <h2 id="modal-title">Novo Produto</h2>
+        <button id="modal-close" class="modal-close" aria-label="Fechar">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="product-form" novalidate>
+
+          <!-- Imagem -->
+          <div class="form-group">
+            <label>Imagem do Produto</label>
+            <div
+              id="img-dropzone"
+              class="img-dropzone"
+              tabindex="0"
+              role="button"
+              aria-label="Clique ou arraste uma imagem para fazer upload"
+            >
+              <span class="dropzone-icon">📷</span>
+              <span>Arraste uma imagem aqui ou <strong>clique para selecionar</strong></span>
+              <span class="dropzone-hint">JPG, PNG ou WebP — máx. 4 MB (redimensionado automaticamente)</span>
+            </div>
+            <input type="file" id="img-file-input" accept="image/jpeg,image/png,image/webp" hidden>
+            <input type="hidden" id="img-base64">
+            <div id="img-preview" class="img-preview" hidden></div>
+            <div class="img-url-row">
+              <button type="button" id="btn-img-url"    class="btn-ghost btn-sm">🔗 Usar URL</button>
+              <button type="button" id="btn-img-remove" class="btn-ghost btn-sm btn-danger-ghost">🗑 Remover</button>
+            </div>
+          </div>
+
+          <!-- Nome + Categoria -->
+          <div class="form-row">
+            <div class="form-group form-group--grow">
+              <label for="field-name">Nome <span class="required">*</span></label>
+              <input
+                type="text"
+                id="field-name"
+                required
+                placeholder="Ex: Jack Daniel's Tennessee 1L"
+                maxlength="120"
+              >
+            </div>
+            <div class="form-group">
+              <label for="field-category">Categoria</label>
+              <select id="field-category">
+                <option value="destilados">Destilados</option>
+                <option value="whisky">Whisky</option>
+                <option value="vodka">Vodka</option>
+                <option value="gin">Gin</option>
+                <option value="rum">Rum</option>
+                <option value="tequila">Tequila</option>
+                <option value="cervejas">Cervejas</option>
+                <option value="vinhos">Vinhos</option>
+                <option value="espumante">Espumante</option>
+                <option value="bebidas">Bebidas</option>
+                <option value="energetico">Energético</option>
+                <option value="agua">Água</option>
+                <option value="tabacaria">Tabacaria</option>
+                <option value="cigarro">Cigarro</option>
+                <option value="narguilé">Narguilé</option>
+                <option value="tabaco">Tabaco</option>
+                <option value="snacks">Snacks</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Descrição -->
+          <div class="form-group">
+            <label for="field-description">Descrição</label>
+            <textarea
+              id="field-description"
+              rows="2"
+              placeholder="Breve descrição do produto (opcional)..."
+              maxlength="300"
+            ></textarea>
+          </div>
+
+          <!-- Preço + Estoque -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="field-price">Preço (R$) <span class="required">*</span></label>
+              <input
+                type="number"
+                id="field-price"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                required
+              >
+            </div>
+            <div class="form-group">
+              <label for="field-stock">Estoque</label>
+              <input
+                type="number"
+                id="field-stock"
+                min="0"
+                value="0"
+                placeholder="0"
+              >
+            </div>
+          </div>
+
+          <!-- Toggles -->
+          <div class="form-row form-row--toggles">
+            <label class="toggle-label">
+              <input type="checkbox" id="field-promo">
+              <span class="toggle-text">Em Promoção</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="field-featured">
+              <span class="toggle-text">Destaque</span>
+            </label>
+          </div>
+
+          <!-- Preço promocional (condicional) -->
+          <div id="promo-price-wrap" class="form-group" hidden>
+            <label for="field-promo-price">Preço Promocional (R$)</label>
+            <input
+              type="number"
+              id="field-promo-price"
+              step="0.01"
+              min="0"
+              placeholder="0,00"
+            >
+            <small class="field-hint">
+              O "Preço" informado acima será exibido como preço original riscado (de R$ xx).
+            </small>
+          </div>
+
+          <!-- Rodapé do modal -->
+          <div class="modal-footer">
+            <button type="button" id="modal-cancel" class="btn-ghost">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Produto</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast de notificações -->
+  <div id="admin-toast" class="admin-toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/pdv-api.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

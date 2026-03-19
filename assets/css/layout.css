@@ -1,0 +1,533 @@
+/* ============================================================
+   LAYOUT — El Chefe
+   Tema: Branco + Vermelho + Preto (identidade visual das logos)
+   ============================================================ */
+
+/* ── Container ────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-px);
+}
+
+/* ── Page body (offset do header fixo) ───────────────────── */
+.page-body {
+  padding-top: var(--header-height);
+  background: var(--color-bg);
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-header);
+  height: var(--header-height);
+  background: #ffffff;
+  border-bottom: 3px solid var(--color-red);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+/* Linha preta fina abaixo da borda vermelha */
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-black);
+  opacity: 0.06;
+}
+
+.header__inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+/* Logo no header: imagem real */
+.header__logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+/*
+  LogoPretoBranco.jpeg: canvas 1600×1600, conteúdo em y=433–1097 (47.8% centro).
+  Escala 0.1375 (width-driven): conteúdo renderiza ~193×91px.
+  object-position center 47.8% → centraliza no conteúdo da logo,
+  exibindo ~97% da logo verticalmente no container 220×90.
+*/
+.header__logo-img {
+  width: 220px;
+  height: 84px;
+  object-fit: cover;
+  object-position: center 47.8%;
+  display: block;
+  flex-shrink: 0;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.nav__link {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color var(--transition-fast);
+  position: relative;
+}
+
+.nav__link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-red);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--transition-normal);
+}
+
+.nav__link:hover {
+  color: var(--color-red);
+}
+
+.nav__link:hover::after {
+  transform: scaleX(1);
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: calc(100dvh - var(--header-height));
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* Textura de fundo sutil */
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 28px,
+      rgba(0,0,0,0.028) 28px,
+      rgba(0,0,0,0.028) 29px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 28px,
+      rgba(0,0,0,0.014) 28px,
+      rgba(0,0,0,0.014) 29px
+    );
+  pointer-events: none;
+}
+
+/* Faixa vermelha diagonal decorativa */
+.hero__bg::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -5%;
+  width: 55%;
+  height: 130%;
+  background: var(--color-red);
+  clip-path: polygon(18% 0%, 100% 0%, 100% 100%, 0% 100%);
+  opacity: 0.04;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 1;
+  padding-block: var(--space-16);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-px);
+}
+
+/* Logo grande no lado esquerdo */
+.hero__logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero__logo-img {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  /* fundo branco da imagem = fundo branco do hero → invisível */
+  display: block;
+  /* Sombra sutil para dar profundidade sem revelar o recorte */
+  filter: drop-shadow(0 8px 32px rgba(196,30,58,0.10));
+}
+
+/* Texto e CTA do lado direito */
+.hero__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-red);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.hero__eyebrow::before {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 2px;
+  background: var(--color-red);
+  flex-shrink: 0;
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--color-black);
+}
+
+.hero__title em {
+  font-style: normal;
+  color: var(--color-red);
+}
+
+.hero__subtitle {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  max-width: 36ch;
+  border-left: 3px solid var(--color-red);
+  padding-left: var(--space-4);
+}
+
+.hero__cta {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* ── Sections ─────────────────────────────────────────────── */
+.section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--space-8);
+  color: var(--color-black);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Linha vermelha antes do título */
+.section-title::before {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 1.1em;
+  background: var(--color-red);
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.section-title__accent {
+  color: var(--color-red);
+}
+
+/* Promoções — fundo levemente vermelho */
+.promo-banner {
+  padding-block: var(--space-16);
+  background: var(--color-red-bg);
+  border-top: 1px solid rgba(196,30,58,0.12);
+  border-bottom: 1px solid rgba(196,30,58,0.12);
+}
+
+.promo-banner .section-title {
+  color: var(--color-red-dark);
+}
+
+.promo-banner .section-title::before {
+  background: var(--color-red-dark);
+}
+
+.catalog {
+  padding-block: var(--space-16);
+  background: var(--color-bg);
+}
+
+/* ── Filter Bar ───────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-8);
+  scrollbar-width: none;
+}
+
+.filter-bar::-webkit-scrollbar { display: none; }
+
+/* ── Products Grid ────────────────────────────────────────── */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-6);
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border) 20%,
+    var(--color-red) 50%,
+    var(--color-border) 80%,
+    transparent
+  );
+  margin: 0;
+}
+
+/* ── About ────────────────────────────────────────────────── */
+.about {
+  padding-block: var(--space-20);
+  background: var(--color-black);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Textura sobre fundo preto */
+.about::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  pointer-events: none;
+}
+
+.about__inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-16);
+  align-items: center;
+}
+
+/* Logo circular no about */
+.about__logo-wrap {
+  flex-shrink: 0;
+}
+
+.about__logo-img {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  border-radius: 50%;
+  /* Fundo branco da imagem cria círculo sobre o preto */
+  background: #ffffff;
+  padding: var(--space-3);
+  box-shadow: 0 0 0 4px var(--color-red), 0 0 40px rgba(196,30,58,0.35);
+}
+
+.about__text .section-title {
+  color: #ffffff;
+}
+
+.about__text .section-title::before {
+  background: var(--color-red);
+}
+
+.about__text p {
+  color: rgba(255,255,255,0.7);
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-4);
+  max-width: 52ch;
+}
+
+.about__address {
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255,255,255,0.06);
+  border-left: 3px solid var(--color-red);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: rgba(255,255,255,0.55);
+}
+
+.about__address strong {
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+.footer {
+  padding-block: var(--space-10) var(--space-6);
+  background: #ffffff;
+  border-top: 3px solid var(--color-red);
+}
+
+.footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+  Mesma lógica do header: canvas 1600×1600, conteúdo em y=47.8%.
+  Escala 0.1 (width-driven, 160/1600): conteúdo renderiza ~141×66px.
+  Container 160×65px exibe ~98% do conteúdo vertical.
+*/
+.footer__brand-img {
+  width: 160px;
+  height: 65px;
+  object-fit: cover;
+  object-position: center 47.8%;
+  display: block;
+}
+
+.footer__brand p {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.footer__contact p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.footer__copy {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+  max-width: 100%;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero__content {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: var(--space-8);
+  }
+
+  .hero__logo-wrap {
+    order: -1;
+  }
+
+  .hero__logo-img {
+    max-width: 320px;
+  }
+
+  .hero__eyebrow {
+    justify-content: center;
+  }
+
+  .hero__eyebrow::before { display: none; }
+
+  .hero__subtitle {
+    border-left: none;
+    padding-left: 0;
+    border-top: 3px solid var(--color-red);
+    padding-top: var(--space-3);
+    text-align: center;
+    margin-inline: auto;
+  }
+
+  .hero__cta {
+    justify-content: center;
+  }
+
+  .about__inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+    justify-items: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .header__nav {
+    display: none;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+
+  .about__logo-img {
+    width: 150px;
+    height: 150px;
+  }
+}
