@@ -221,7 +221,6 @@ const ElChefeCheckout = (() => {
     text += `WhatsApp: (${customerData.phone.slice(0,2)}) ${customerData.phone.slice(2,3)} ${customerData.phone.slice(3,7)}-${customerData.phone.slice(7)}\n`;
     text += `CEP:      ${customerData.cep.slice(0,5)}-${customerData.cep.slice(5)}\n`;
     text += `Endereço: ${customerData.address}${customerData.complement ? ', ' + customerData.complement : ''}\n`;
-    text += `Zona:     ${customerData.zone}\n`;
     if (customerData.notes) text += `Obs:      ${customerData.notes}\n`;
 
     text += `\n📦 ITENS DO PEDIDO\n`;

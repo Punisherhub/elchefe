@@ -328,6 +328,11 @@
   background: var(--color-surface);
 }
 
+.product-card__footer .btn {
+  padding-inline: var(--space-3);
+  font-size: var(--text-sm);
+}
+
 .product-card--out-of-stock .product-card__footer {
   opacity: 0.5;
   pointer-events: none;
