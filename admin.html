@@ -158,12 +158,27 @@
           <p class="pdv-img-loading">Carregando produtos do PDV...</p>
         </div>
 
-        <!-- Input file oculto para upload nas cards -->
-        <input type="file" id="pdv-img-file-input" accept="image/jpeg,image/png,image/webp" hidden>
-
       </section>
 
     </main>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       MODAL — PICKER DE IMAGENS PDV
+       ══════════════════════════════════════════════ -->
+  <div id="img-picker-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="img-picker-title">
+    <div class="modal-dialog modal-dialog--wide">
+      <div class="modal-header">
+        <h2 id="img-picker-title">Selecionar Imagem</h2>
+        <button id="img-picker-close" class="modal-close" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="img-picker-hint">Imagens disponíveis em <code>assets/img/pdv/</code>. Adicione arquivos nessa pasta e rode <code>npm run manifest</code> antes do deploy.</p>
+        <div id="img-picker-grid" class="img-picker-grid">
+          <p class="pdv-img-loading">Carregando...</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════════════

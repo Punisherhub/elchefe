@@ -568,7 +568,7 @@ const ElChefeAdmin = (() => {
             <small>ID: ${esc(p.id)} · ${esc(p.category || 'sem categoria')} · R$ ${p.price?.toFixed(2).replace('.',',')}</small>
           </div>
           <div class="pdv-img-actions">
-            <button class="btn-primary btn-sm btn-pdv-upload" data-id="${esc(p.id)}">📷 Upload</button>
+            <button class="btn-primary btn-sm btn-pdv-pick" data-id="${esc(p.id)}">🖼 Selecionar</button>
             <button class="btn-ghost btn-sm btn-pdv-url"    data-id="${esc(p.id)}">🔗 URL</button>
             ${removeBtn}
           </div>
@@ -576,49 +576,45 @@ const ElChefeAdmin = (() => {
     }).join('');
   }
 
-  async function handlePdvImageFile(file, productId) {
-    if (!file || !file.type.startsWith('image/')) {
-      showToast('Arquivo inválido. Use JPG, PNG ou WebP.', 'error');
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      showToast('Imagem muito grande (máx 4 MB).', 'error');
-      return;
-    }
+  async function openImgPicker(productId) {
+    pdvUploadTargetId = productId;
+    const grid = $('img-picker-grid');
+    grid.innerHTML = `<p class="pdv-img-loading">Carregando...</p>`;
+    $('img-picker-modal').hidden = false;
 
-    showToast('Enviando imagem...');
+    try {
+      const res   = await fetch('assets/img/pdv/manifest.json?t=' + Date.now());
+      const files = await res.json();
 
-    const reader = new FileReader();
-    reader.onload = async e => {
-      const base64 = e.target.result.split(',')[1];
-      const apiKey = window.ElChefeConfig?.IMGBB_API_KEY;
-
-      if (!apiKey) {
-        showToast('IMGBB_API_KEY não configurada.', 'error');
+      if (!Array.isArray(files) || files.length === 0) {
+        grid.innerHTML = `<p class="img-picker-empty">Nenhuma imagem encontrada em <code>assets/img/pdv/</code>.<br>Adicione arquivos e rode <code>npm run manifest</code>.</p>`;
         return;
       }
 
-      try {
-        const form = new FormData();
-        form.append('key', apiKey);
-        form.append('image', base64);
+      grid.innerHTML = files.map(f => `
+        <div class="img-picker-item" data-file="${esc(f)}" title="${esc(f)}">
+          <img src="assets/img/pdv/${esc(f)}" alt="${esc(f)}" loading="lazy">
+        </div>
+      `).join('');
+    } catch (_) {
+      grid.innerHTML = `<p class="img-picker-empty">Erro ao carregar manifest.json.</p>`;
+    }
+  }
 
-        const res  = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: form });
-        const json = await res.json();
+  function closeImgPicker() {
+    $('img-picker-modal').hidden = true;
+    pdvUploadTargetId = null;
+  }
 
-        if (!json.success) throw new Error(json.error?.message ?? 'Erro desconhecido');
-
-        const url = json.data.url;
-        const map = loadPdvImageMap();
-        map[String(productId)] = url;
-        savePdvImageMap(map);
-        renderPdvImageGrid();
-        showToast('Imagem salva!');
-      } catch (err) {
-        showToast(`Falha no upload: ${err.message}`, 'error');
-      }
-    };
-    reader.readAsDataURL(file);
+  function pickImage(filename) {
+    if (!pdvUploadTargetId) return;
+    const path = `assets/img/pdv/${filename}`;
+    const map  = loadPdvImageMap();
+    map[String(pdvUploadTargetId)] = path;
+    savePdvImageMap(map);
+    renderPdvImageGrid();
+    closeImgPicker();
+    showToast('Imagem selecionada!');
   }
 
   function handlePdvImageUrl(productId) {
@@ -766,24 +762,25 @@ const ElChefeAdmin = (() => {
 
     // ─ PDV Images — grid (delegação)
     $('pdv-img-grid').addEventListener('click', e => {
-      const upload = e.target.closest('.btn-pdv-upload');
+      const pick   = e.target.closest('.btn-pdv-pick');
       const url    = e.target.closest('.btn-pdv-url');
       const remove = e.target.closest('.btn-pdv-remove');
 
-      if (upload) {
-        pdvUploadTargetId = upload.dataset.id;
-        $('pdv-img-file-input').value = '';
-        $('pdv-img-file-input').click();
-      }
+      if (pick)   openImgPicker(pick.dataset.id);
       if (url)    handlePdvImageUrl(url.dataset.id);
       if (remove) handlePdvImageRemove(remove.dataset.id);
     });
 
-    // ─ PDV Images — file input
-    $('pdv-img-file-input').addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (file && pdvUploadTargetId) handlePdvImageFile(file, pdvUploadTargetId);
-      e.target.value = '';
+    // ─ Image Picker — seleção
+    $('img-picker-grid').addEventListener('click', e => {
+      const item = e.target.closest('.img-picker-item');
+      if (item) pickImage(item.dataset.file);
+    });
+
+    // ─ Image Picker — fechar
+    $('img-picker-close').addEventListener('click', closeImgPicker);
+    $('img-picker-modal').addEventListener('click', e => {
+      if (e.target === $('img-picker-modal')) closeImgPicker();
     });
 
     // ─ PDV Images — recarregar

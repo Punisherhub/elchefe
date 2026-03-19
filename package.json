@@ -5,7 +5,8 @@
   "description": "El Chefe — Conveniência & Tabacaria, Ponta Grossa PR",
   "scripts": {
     "start": "serve . -l $PORT --no-clipboard",
-    "dev": "serve . -l 3000 --no-clipboard"
+    "dev": "serve . -l 3000 --no-clipboard",
+    "manifest": "node scripts/generate-pdv-manifest.js"
   },
   "dependencies": {
     "serve": "14.2.4"
