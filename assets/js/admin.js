@@ -512,24 +512,6 @@ const ElChefeAdmin = (() => {
 
   function savePdvImageMap(map) {
     localStorage.setItem(KEY_PDV_IMAGES, JSON.stringify(map));
-    syncMapToCloudinary(map);
-  }
-
-  async function syncMapToCloudinary(map) {
-    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
-    const preset    = window.ElChefeConfig?.CLOUDINARY_UPLOAD_PRESET;
-    if (!cloudName || !preset) return;
-    try {
-      const blob = new Blob([JSON.stringify(map)], { type: 'application/json' });
-      const form = new FormData();
-      form.append('file', blob, 'map.json');
-      form.append('upload_preset', preset);
-      form.append('public_id', 'elchefe-pdv-map');
-      await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
-        method: 'POST',
-        body: form,
-      });
-    } catch (_) {}
   }
 
   async function loadPdvImagesSection() {
@@ -655,6 +637,13 @@ const ElChefeAdmin = (() => {
     savePdvImageMap(map);
     renderPdvImageGrid();
     showToast('Imagem removida.', 'info');
+
+    // Remove do Cloudinary via proxy no servidor
+    fetch('/api/cloudinary/delete', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ productId }),
+    }).catch(() => {});
   }
 
   // ── Binding de eventos ───────────────────────────────────────────────────────

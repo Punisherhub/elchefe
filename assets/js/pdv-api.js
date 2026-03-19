@@ -138,35 +138,28 @@ const ElChefePDV = (() => {
   // ── Imagens locais para produtos do PDV ──────────────────────
 
   /**
-   * Carrega o mapa produto→imagem do Cloudinary.
-   * Fallback: localStorage (útil para o admin ver mudanças imediatas).
-   */
-  async function loadImageMap() {
-    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
-    if (cloudName) {
-      try {
-        const res = await fetch(
-          `https://res.cloudinary.com/${cloudName}/raw/upload/elchefe-pdv-map.json`,
-          { cache: 'no-store' }
-        );
-        if (res.ok) return await res.json();
-      } catch (_) {}
-    }
-    try {
-      const raw = localStorage.getItem('elchefe_pdv_images');
-      return raw ? JSON.parse(raw) : {};
-    } catch (_) { return {}; }
-  }
-
-  /**
-   * Aplica imagens do mapa Cloudinary aos produtos do PDV.
+   * Aplica imagens do Cloudinary aos produtos do PDV.
+   * Usa URL determinística baseada no public_id (elchefe-pdv-{id}).
+   * Fallback: localStorage (admin — sessão atual).
    */
   async function enrichWithImages(produtos) {
-    const map = await loadImageMap();
-    return produtos.map(p => ({
-      ...p,
-      image: p.image ?? map[String(p.id)] ?? null,
-    }));
+    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
+
+    let localMap = {};
+    try {
+      const raw = localStorage.getItem('elchefe_pdv_images');
+      if (raw) localMap = JSON.parse(raw);
+    } catch (_) {}
+
+    return produtos.map(p => {
+      const cloudUrl = cloudName
+        ? `https://res.cloudinary.com/${cloudName}/image/upload/elchefe-pdv-${p.id}`
+        : null;
+      return {
+        ...p,
+        image: p.image ?? localMap[String(p.id)] ?? cloudUrl,
+      };
+    });
   }
 
   // ── Produtos locais (admin localStorage tem prioridade) ──────
@@ -240,7 +233,7 @@ const ElChefePDV = (() => {
       if (cfg().USE_LOCAL_FALLBACK) {
         console.info('[ElChefe PDV] Usando fallback local.');
         return {
-          produtos: getLocalProducts(),
+          produtos: await enrichWithImages(getLocalProducts()),
           fonte: 'local',
           erro: motivo,
         };
