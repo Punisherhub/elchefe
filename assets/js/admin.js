@@ -512,6 +512,24 @@ const ElChefeAdmin = (() => {
 
   function savePdvImageMap(map) {
     localStorage.setItem(KEY_PDV_IMAGES, JSON.stringify(map));
+    syncMapToCloudinary(map);
+  }
+
+  async function syncMapToCloudinary(map) {
+    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
+    const preset    = window.ElChefeConfig?.CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !preset) return;
+    try {
+      const blob = new Blob([JSON.stringify(map)], { type: 'application/json' });
+      const form = new FormData();
+      form.append('file', blob, 'map.json');
+      form.append('upload_preset', preset);
+      form.append('public_id', 'elchefe-pdv-map');
+      await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`, {
+        method: 'POST',
+        body: form,
+      });
+    } catch (_) {}
   }
 
   async function loadPdvImagesSection() {
@@ -568,53 +586,55 @@ const ElChefeAdmin = (() => {
             <small>ID: ${esc(p.id)} · ${esc(p.category || 'sem categoria')} · R$ ${p.price?.toFixed(2).replace('.',',')}</small>
           </div>
           <div class="pdv-img-actions">
-            <button class="btn-primary btn-sm btn-pdv-pick" data-id="${esc(p.id)}">🖼 Selecionar</button>
-            <button class="btn-ghost btn-sm btn-pdv-url"    data-id="${esc(p.id)}">🔗 URL</button>
+            <button class="btn-primary btn-sm btn-pdv-upload" data-id="${esc(p.id)}">📷 Upload</button>
+            <button class="btn-ghost btn-sm btn-pdv-url"      data-id="${esc(p.id)}">🔗 URL</button>
             ${removeBtn}
           </div>
         </div>`;
     }).join('');
   }
 
-  async function openImgPicker(productId) {
-    pdvUploadTargetId = productId;
-    const grid = $('img-picker-grid');
-    grid.innerHTML = `<p class="pdv-img-loading">Carregando...</p>`;
-    $('img-picker-modal').hidden = false;
+  async function handlePdvImageFile(file, productId) {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Arquivo inválido. Use JPG, PNG ou WebP.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Imagem muito grande (máx 10 MB).', 'error');
+      return;
+    }
+
+    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
+    const preset    = window.ElChefeConfig?.CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !preset) {
+      showToast('Cloudinary não configurado.', 'error');
+      return;
+    }
+
+    showToast('Enviando imagem...');
 
     try {
-      const res   = await fetch('assets/img/pdv/manifest.json?t=' + Date.now());
-      const files = await res.json();
+      const form = new FormData();
+      form.append('file', file);
+      form.append('upload_preset', preset);
+      form.append('public_id', `elchefe-pdv-${productId}`);
 
-      if (!Array.isArray(files) || files.length === 0) {
-        grid.innerHTML = `<p class="img-picker-empty">Nenhuma imagem encontrada em <code>assets/img/pdv/</code>.<br>Adicione arquivos e rode <code>npm run manifest</code>.</p>`;
-        return;
-      }
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: form,
+      });
+      const json = await res.json();
 
-      grid.innerHTML = files.map(f => `
-        <div class="img-picker-item" data-file="${esc(f)}" title="${esc(f)}">
-          <img src="assets/img/pdv/${esc(f)}" alt="${esc(f)}" loading="lazy">
-        </div>
-      `).join('');
-    } catch (_) {
-      grid.innerHTML = `<p class="img-picker-empty">Erro ao carregar manifest.json.</p>`;
+      if (json.error) throw new Error(json.error.message);
+
+      const map = loadPdvImageMap();
+      map[String(productId)] = json.secure_url;
+      savePdvImageMap(map);
+      renderPdvImageGrid();
+      showToast('Imagem salva!');
+    } catch (err) {
+      showToast(`Falha no upload: ${err.message}`, 'error');
     }
-  }
-
-  function closeImgPicker() {
-    $('img-picker-modal').hidden = true;
-    pdvUploadTargetId = null;
-  }
-
-  function pickImage(filename) {
-    if (!pdvUploadTargetId) return;
-    const path = `assets/img/pdv/${filename}`;
-    const map  = loadPdvImageMap();
-    map[String(pdvUploadTargetId)] = path;
-    savePdvImageMap(map);
-    renderPdvImageGrid();
-    closeImgPicker();
-    showToast('Imagem selecionada!');
   }
 
   function handlePdvImageUrl(productId) {
@@ -762,25 +782,24 @@ const ElChefeAdmin = (() => {
 
     // ─ PDV Images — grid (delegação)
     $('pdv-img-grid').addEventListener('click', e => {
-      const pick   = e.target.closest('.btn-pdv-pick');
+      const upload = e.target.closest('.btn-pdv-upload');
       const url    = e.target.closest('.btn-pdv-url');
       const remove = e.target.closest('.btn-pdv-remove');
 
-      if (pick)   openImgPicker(pick.dataset.id);
+      if (upload) {
+        pdvUploadTargetId = upload.dataset.id;
+        $('pdv-img-file-input').value = '';
+        $('pdv-img-file-input').click();
+      }
       if (url)    handlePdvImageUrl(url.dataset.id);
       if (remove) handlePdvImageRemove(remove.dataset.id);
     });
 
-    // ─ Image Picker — seleção
-    $('img-picker-grid').addEventListener('click', e => {
-      const item = e.target.closest('.img-picker-item');
-      if (item) pickImage(item.dataset.file);
-    });
-
-    // ─ Image Picker — fechar
-    $('img-picker-close').addEventListener('click', closeImgPicker);
-    $('img-picker-modal').addEventListener('click', e => {
-      if (e.target === $('img-picker-modal')) closeImgPicker();
+    // ─ PDV Images — file input
+    $('pdv-img-file-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file && pdvUploadTargetId) handlePdvImageFile(file, pdvUploadTargetId);
+      e.target.value = '';
     });
 
     // ─ PDV Images — recarregar

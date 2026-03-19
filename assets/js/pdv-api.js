@@ -138,22 +138,35 @@ const ElChefePDV = (() => {
   // ── Imagens locais para produtos do PDV ──────────────────────
 
   /**
-   * Aplica imagens gerenciadas pelo painel admin aos produtos do PDV.
-   * Mapa armazenado em localStorage sob a chave 'elchefe_pdv_images'.
-   * A imagem local tem prioridade apenas se o PDV não retornar foto_url.
+   * Carrega o mapa produto→imagem do Cloudinary.
+   * Fallback: localStorage (útil para o admin ver mudanças imediatas).
    */
-  function enrichWithLocalImages(produtos) {
+  async function loadImageMap() {
+    const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
+    if (cloudName) {
+      try {
+        const res = await fetch(
+          `https://res.cloudinary.com/${cloudName}/raw/upload/elchefe-pdv-map.json`,
+          { cache: 'no-store' }
+        );
+        if (res.ok) return await res.json();
+      } catch (_) {}
+    }
     try {
       const raw = localStorage.getItem('elchefe_pdv_images');
-      if (!raw) return produtos;
-      const map = JSON.parse(raw);
-      return produtos.map(p => ({
-        ...p,
-        image: p.image ?? map[String(p.id)] ?? null,
-      }));
-    } catch (_) {
-      return produtos;
-    }
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) { return {}; }
+  }
+
+  /**
+   * Aplica imagens do mapa Cloudinary aos produtos do PDV.
+   */
+  async function enrichWithImages(produtos) {
+    const map = await loadImageMap();
+    return produtos.map(p => ({
+      ...p,
+      image: p.image ?? map[String(p.id)] ?? null,
+    }));
   }
 
   // ── Produtos locais (admin localStorage tem prioridade) ──────
@@ -214,7 +227,7 @@ const ElChefePDV = (() => {
 
       const data = await res.json();
       const lista = Array.isArray(data) ? data : (data.produtos ?? []);
-      const produtos = enrichWithLocalImages(lista.map(normalizeProduct));
+      const produtos = await enrichWithImages(lista.map(normalizeProduct));
 
       console.info(`[ElChefe PDV] ${produtos.length} produto(s) carregado(s) do PDV.`);
 

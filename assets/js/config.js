@@ -34,6 +34,10 @@ window.ElChefeConfig = {
   USE_LOCAL_FALLBACK: true,
   API_TIMEOUT_MS: 8000,
 
+  // ── Cloudinary (imagens dos produtos PDV) ────────────────
+  CLOUDINARY_CLOUD_NAME:    'dyrpp5rwg',
+  CLOUDINARY_UPLOAD_PRESET: 'Site El Chefe',
+
   // ── WhatsApp da loja ─────────────────────────────────────
   // TODO: substitua pelo número real (DDI + DDD + número, sem espaços)
   WHATSAPP_NUMBER: '5542999959547',
