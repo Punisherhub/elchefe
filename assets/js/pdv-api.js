@@ -81,12 +81,28 @@ const ElChefePDV = (() => {
    * @param {Object} p  produto vindo do PDV
    * @returns {Object}
    */
+  /**
+   * Corrige double-encoding UTF-8 → Latin-1 que ocorre na serialização do PDV.
+   * Ex: "Bebidas alcÃ³licas" → "Bebidas alcoólicas"
+   * @param {string} str
+   * @returns {string}
+   */
+  function fixEncoding(str) {
+    if (!str) return str;
+    try {
+      return decodeURIComponent(escape(str));
+    } catch {
+      return str;
+    }
+  }
+
   function normalizeProduct(p) {
+    const categoria = fixEncoding(p.categoria ?? '');
     return {
       id:            String(p.id),
-      name:          p.nome,
+      name:          fixEncoding(p.nome),
       slug:          p.nome?.toLowerCase().replace(/\s+/g, '-'),
-      category:      (p.categoria ?? '').toLowerCase(),
+      category:      categoria.toLowerCase(),
       description:   p.descricao ?? '',
       price:         p.em_promocao && p.preco_promocional
                        ? parseFloat(p.preco_promocional)
@@ -98,7 +114,7 @@ const ElChefePDV = (() => {
       isFeatured:    !!(p.destaque_site ?? p.destaque),
       stock:         parseInt(p.estoque_disponivel ?? 0, 10),
       image:         p.foto_url ?? null,
-      emoji:         emojiForCategory(p.categoria),
+      emoji:         emojiForCategory(categoria),
     };
   }
 
@@ -109,27 +125,29 @@ const ElChefePDV = (() => {
    */
   function emojiForCategory(categoria) {
     const map = {
+      // Categorias do PDV OnSell
+      'bebidas alcoólicas':     '🍺',
+      'bebidas não alcoólicas': '🥤',
+      'tabacaria':              '🚬',
+      'comidas':                '🍿',
+      'doces':                  '🍬',
+      'diversos':               '📦',
+      'padaria':                '🥐',
+      'higiene':                '🧴',
+      'animais':                '🐾',
+      // Genéricos / fallback
       destilados: '🥃',
       whisky:     '🥃',
       vodka:      '🍶',
       gin:        '🍸',
-      rum:        '🍹',
-      tequila:    '🥂',
       cervejas:   '🍺',
-      cerveja:    '🍺',
       vinhos:     '🍷',
-      vinho:      '🍷',
       espumante:  '🥂',
-      bebidas:    '🥤',
       energetico: '⚡',
       agua:       '💧',
-      tabacaria:  '🚬',
       cigarro:    '🚬',
       narguilé:   '🪔',
-      tabaco:     '🍃',
       snacks:     '🍿',
-      amendoim:   '🥜',
-      castanhas:  '🌰',
     };
     const key = (categoria ?? '').toLowerCase();
     return map[key] ?? '📦';

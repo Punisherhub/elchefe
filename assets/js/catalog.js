@@ -30,6 +30,7 @@ const ElChefeCatalog = (() => {
   const grid       = () => document.getElementById('products-grid');
   const promoGrid  = () => document.getElementById('promo-grid');
   const emptyState = () => document.getElementById('empty-state');
+  const filterBar  = () => document.getElementById('filter-bar');
   const filterBtns = () => document.querySelectorAll('.filter-btn');
 
   // ── Webflow CMS Normalizer ────────────────────────────────────────────────
@@ -266,10 +267,46 @@ const ElChefeCatalog = (() => {
     });
   }
 
+  // ── Filtros Dinâmicos ─────────────────────────────────────────────────────
+
+  /**
+   * Gera os botões de filtro a partir das categorias presentes nos produtos.
+   * Mantém o botão "Todos" fixo e adiciona um botão por categoria única.
+   */
+  function buildFilters(produtos) {
+    const bar = filterBar();
+    if (!bar) return;
+
+    const categorias = [...new Set(
+      produtos
+        .map(p => p.category)
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    // Capitaliza primeira letra para exibição
+    const label = cat => cat.charAt(0).toUpperCase() + cat.slice(1);
+
+    const botoes = categorias.map(cat => `
+      <button
+        class="filter-btn"
+        data-filter="${cat}"
+        role="tab"
+        aria-selected="false"
+      >${label(cat)}</button>
+    `).join('');
+
+    // Mantém o "Todos" e injeta os demais
+    bar.innerHTML = `
+      <button class="filter-btn filter-btn--active" data-filter="all" role="tab" aria-selected="true" aria-controls="products-panel">Todos</button>
+      ${botoes}
+    `;
+  }
+
   // ── Inicialização ────────────────────────────────────────────────────────
 
   async function init() {
     allProducts = await loadProducts();
+    buildFilters(allProducts);
     renderPromo();
     renderCatalog();
     bindEvents();
