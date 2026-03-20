@@ -5,7 +5,10 @@
       "mcp__puppeteer__puppeteer_screenshot",
       "mcp__puppeteer__puppeteer_evaluate",
       "mcp__puppeteer__puppeteer_fill",
-      "mcp__puppeteer__puppeteer_click"
+      "mcp__puppeteer__puppeteer_click",
+      "Bash(find /c/xampp/htdocs/ElChefe -maxdepth 2 -type f -name *.md -o -name *.json -o -name *.php -o -name .env* -o -name *.xml)",
+      "Bash(find /c/xampp/htdocs/ElChefe -type f -name *.html -o -name *.js -o -name *.css)",
+      "mcp__BD_PDV__query"
     ]
   }
 }

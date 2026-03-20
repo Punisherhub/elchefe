@@ -33,15 +33,13 @@ const ElChefeUtils = (() => {
   /**
    * Aplica máscara de telefone brasileiro.
    * @param {string} value
-   * @returns {string} "(42) 9 0000-0000"
+   * @returns {string} "(42) 0000-0000"
    */
   function maskPhone(value) {
-    const d = value.replace(/\D/g, '').slice(0, 11);
-    if (d.length <= 2)  return `(${d}`;
-    if (d.length <= 3)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
-    if (d.length <= 7)  return `(${d.slice(0,2)}) ${d.slice(2,3)} ${d.slice(3)}`;
-    if (d.length <= 11) return `(${d.slice(0,2)}) ${d.slice(2,3)} ${d.slice(3,7)}-${d.slice(7)}`;
-    return value;
+    const d = value.replace(/\D/g, '').slice(0, 10);
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+    return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
   }
 
   /**

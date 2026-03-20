@@ -85,8 +85,8 @@ const ElChefeCheckout = (() => {
     }
 
     const phone = ElChefeUtils.onlyDigits(fieldPhone()?.value ?? '');
-    if (phone.length < 10 || phone.length > 11) {
-      setError('phone', 'Informe um WhatsApp válido com DDD.');
+    if (phone.length !== 10) {
+      setError('phone', 'Informe um telefone válido com DDD (ex: 42 3333-4444).');
       valid = false;
     }
 
@@ -218,7 +218,7 @@ const ElChefeCheckout = (() => {
 
     text += `👤 CLIENTE\n`;
     text += `Nome:     ${customerData.name}\n`;
-    text += `WhatsApp: (${customerData.phone.slice(0,2)}) ${customerData.phone.slice(2,3)} ${customerData.phone.slice(3,7)}-${customerData.phone.slice(7)}\n`;
+    text += `Telefone: (${customerData.phone.slice(0,2)}) ${customerData.phone.slice(2,6)}-${customerData.phone.slice(6)}\n`;
     text += `CEP:      ${customerData.cep.slice(0,5)}-${customerData.cep.slice(5)}\n`;
     text += `Endereço: ${customerData.address}${customerData.complement ? ', ' + customerData.complement : ''}\n`;
     if (customerData.notes) text += `Obs:      ${customerData.notes}\n`;

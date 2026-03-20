@@ -1,14 +1,13 @@
 /**
  * shipping.js — El Chefe
  *
- * Lógica de cálculo de frete para Ponta Grossa - PR.
+ * Calcula o frete com base na distância real entre a loja e o CEP do cliente.
  *
- * ESTRATÉGIA HÍBRIDA:
- *  1. Tabela de faixas de CEP para bairros de PG (resolução imediata, sem API).
- *  2. Fallback para API ViaCEP + Google Distance Matrix se o CEP não for de PG.
- *
- * Para ativar a Google Distance Matrix API, configure:
- *   ElChefeShipping.GOOGLE_MAPS_API_KEY = 'SUA_CHAVE_AQUI';
+ * ESTRATÉGIA:
+ *  1. ViaCEP  → valida o CEP e obtém o endereço completo.
+ *  2. Nominatim (OpenStreetMap) → geocodifica o CEP para coordenadas (lat/lng).
+ *  3. Haversine → distância em linha reta × fator de rota (1.35) ≈ km percorridos.
+ *  4. Tabela de faixas de km → determina a taxa de entrega.
  *
  * Coordenadas da loja:
  *   Lat: -25.0952, Lng: -50.1622
@@ -21,138 +20,122 @@ const ElChefeShipping = (() => {
 
   // ── Configuração ─────────────────────────────────────────────────────────
 
-  /** @type {string} Chave da Google Maps Distance Matrix API (preencha depois) */
-  let GOOGLE_MAPS_API_KEY = ''; // TODO: adicione sua chave aqui
-
   const STORE_LAT = -25.0952;
   const STORE_LNG = -50.1622;
 
-  /** Frete grátis acima deste valor (R$). 0 = desativado. */
+  /**
+   * Fator de correção de linha reta → distância por rota.
+   * 1.35 é uma estimativa conservadora para áreas urbanas.
+   */
+  const ROAD_FACTOR = 1.35;
+
+  /** Frete grátis acima deste valor em R$. 0 = desativado. */
   const FREE_SHIPPING_THRESHOLD = 0;
 
-  /** Taxa mínima de entrega */
-  const BASE_FEE = 5.00;
-
-  // ── Tabela de faixas de CEP — Ponta Grossa/PR ────────────────────────────
+  // ── Tabela de faixas de distância ────────────────────────────────────────
   //
-  //  Cada entrada: [cepInicio, cepFim, taxa, nomeZona]
-  //  CEPs de Ponta Grossa vão de 84000-000 a 84999-999 (aprox.)
-  //  Dividimos em zonas por distância estimada do centro/loja.
+  //  Cada entrada: { maxKm, fee }
+  //  O sistema percorre a tabela de cima para baixo e aplica a taxa da
+  //  primeira faixa onde distância estimada ≤ maxKm.
+  //  CEPs acima do maior maxKm ficam fora da área de entrega.
 
-  const CEP_ZONES = [
-    // Zona 1 — Vizinhança imediata / Centro (~0-3 km)
-    { from: 84010000, to: 84020999, fee: 5.00,  zone: 'Centro / Zona 1' },
-    { from: 84021000, to: 84040999, fee: 6.00,  zone: 'Centro Expandido / Zona 1' },
-
-    // Zona 2 — Bairros próximos (~3-7 km)
-    { from: 84041000, to: 84070999, fee: 8.00,  zone: 'Bairros Norte / Zona 2' },
-    { from: 84071000, to: 84090999, fee: 8.00,  zone: 'Bairros Sul / Zona 2' },
-    { from: 84091000, to: 84110999, fee: 8.00,  zone: 'Bairros Leste / Zona 2' },
-
-    // Zona 3 — Bairros intermediários (~7-12 km)
-    { from: 84111000, to: 84160999, fee: 10.00, zone: 'Zona 3 — Intermediário' },
-    { from: 84161000, to: 84200999, fee: 10.00, zone: 'Zona 3 — Intermediário' },
-
-    // Zona 4 — Periferia e distritos (~12-20 km)
-    { from: 84201000, to: 84400999, fee: 14.00, zone: 'Zona 4 — Periferia' },
-
-    // Zona 5 — Grande Ponta Grossa / Região (~20-40 km)
-    { from: 84401000, to: 84999999, fee: 20.00, zone: 'Zona 5 — Região Metropolitana' },
+  const DISTANCE_FEES = [
+    { maxKm: 1.0, fee:  5.00 },
+    { maxKm: 2.0, fee:  8.00 },
+    { maxKm: 3.0, fee: 10.00 },
+    { maxKm: 4.0, fee: 12.00 },
+    { maxKm: 5.0, fee: 14.00 },
+    { maxKm: 6.5, fee: 15.00 },
   ];
-
-  // Frete para fora de Ponta Grossa (calculado por distância via API)
-  const OUT_OF_CITY_BASE_FEE = 25.00;
-  const FEE_PER_KM           =  0.80; // R$/km acima dos primeiros 20 km
 
   // ── Funções Internas ─────────────────────────────────────────────────────
 
   /**
-   * Normaliza o CEP para número inteiro (8 dígitos).
-   * @param {string} cep
-   * @returns {number|null}
+   * Fórmula de Haversine — distância em km entre dois pontos geográficos.
+   * @param {number} lat1
+   * @param {number} lng1
+   * @param {number} lat2
+   * @param {number} lng2
+   * @returns {number} km
    */
-  function parseCEP(cep) {
-    const digits = cep.replace(/\D/g, '');
-    if (digits.length !== 8) return null;
-    return parseInt(digits, 10);
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R    = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a    = Math.sin(dLat / 2) ** 2
+               + Math.cos(lat1 * Math.PI / 180)
+               * Math.cos(lat2 * Math.PI / 180)
+               * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   /**
-   * Busca a taxa de entrega na tabela de faixas de CEP.
-   * @param {number} cepNum  - CEP como inteiro
-   * @returns {{ fee: number, zone: string }|null}
+   * Busca a taxa na tabela conforme a distância estimada.
+   * Acima da última faixa, aplica a taxa máxima (R$ 15,00 fixo).
+   * @param {number} km
+   * @returns {{ fee: number, maxKm: number }}
    */
-  function lookupCepZone(cepNum) {
-    for (const entry of CEP_ZONES) {
-      if (cepNum >= entry.from && cepNum <= entry.to) {
-        return { fee: entry.fee, zone: entry.zone };
-      }
+  function lookupFee(km) {
+    for (const entry of DISTANCE_FEES) {
+      if (km <= entry.maxKm) return entry;
     }
-    return null;
+    return DISTANCE_FEES[DISTANCE_FEES.length - 1];
   }
 
   /**
-   * Consulta ViaCEP para obter cidade/estado de um CEP.
+   * Consulta ViaCEP para obter endereço a partir de um CEP.
    * @param {string} cep
-   * @returns {Promise<{localidade:string, uf:string, logradouro:string, bairro:string}|null>}
+   * @returns {Promise<object|null>}
    */
   async function fetchViaCEP(cep) {
     const digits = cep.replace(/\D/g, '');
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const res  = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       if (!res.ok) return null;
       const data = await res.json();
-      if (data.erro) return null;
-      return data;
+      return data.erro ? null : data;
     } catch {
       return null;
     }
   }
 
   /**
-   * Calcula distância via Google Distance Matrix API.
-   * Requer GOOGLE_MAPS_API_KEY configurada.
-   * @param {string} destinationCep
-   * @returns {Promise<{ distanceKm: number, durationMin: number }|null>}
+   * Geocodifica um CEP usando a API do Nominatim (OpenStreetMap).
+   * Tenta primeiro pelo CEP puro; se falhar, tenta pelo endereço completo.
+   * @param {string} cep       - 8 dígitos
+   * @param {object} [viaCep]  - dados do ViaCEP para fallback de busca
+   * @returns {Promise<{ lat: number, lng: number }|null>}
    */
-  async function fetchGoogleDistance(destinationCep) {
-    if (!GOOGLE_MAPS_API_KEY) return null;
+  async function geocodeCEP(cep, viaCep) {
+    const digits  = cep.replace(/\D/g, '');
+    const headers = { 'User-Agent': 'ElChefe-Delivery/1.0 (contato@elchefe.com.br)' };
 
-    const origin      = `${STORE_LAT},${STORE_LNG}`;
-    const destination = encodeURIComponent(`CEP ${destinationCep}, Brazil`);
-
-    // ATENÇÃO: Em produção, faça esta chamada pelo seu backend para não expor a chave.
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json`
-      + `?origins=${origin}`
-      + `&destinations=${destination}`
-      + `&key=${GOOGLE_MAPS_API_KEY}`
-      + `&language=pt-BR`
-      + `&units=metric`;
-
+    // Tentativa 1: busca direta pelo CEP
     try {
-      const res  = await fetch(url);
+      const url = `https://nominatim.openstreetmap.org/search`
+        + `?postalcode=${digits}&country=BR&format=json&limit=1`;
+      const res  = await fetch(url, { headers });
       const data = await res.json();
-      const el   = data?.rows?.[0]?.elements?.[0];
-      if (!el || el.status !== 'OK') return null;
+      if (data.length) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch { /* segue para próxima tentativa */ }
 
-      return {
-        distanceKm:  el.distance.value / 1000,
-        durationMin: Math.ceil(el.duration.value / 60),
-      };
-    } catch {
-      return null;
+    // Tentativa 2: busca por cidade + estado (quando o CEP não retorna resultado)
+    if (viaCep?.localidade && viaCep?.uf) {
+      try {
+        const query = encodeURIComponent(`${viaCep.localidade}, ${viaCep.uf}, Brasil`);
+        const url   = `https://nominatim.openstreetmap.org/search`
+          + `?q=${query}&format=json&limit=1`;
+        const res  = await fetch(url, { headers });
+        const data = await res.json();
+        if (data.length) {
+          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+      } catch { /* geocodificação falhou */ }
     }
-  }
 
-  /**
-   * Calcula a taxa de entrega para CEPs fora de Ponta Grossa
-   * usando a distância em km.
-   * @param {number} km
-   * @returns {number}
-   */
-  function calcOutOfCityFee(km) {
-    if (km <= 20) return OUT_OF_CITY_BASE_FEE;
-    return OUT_OF_CITY_BASE_FEE + Math.ceil(km - 20) * FEE_PER_KM;
+    return null;
   }
 
   // ── API Pública ──────────────────────────────────────────────────────────
@@ -160,134 +143,90 @@ const ElChefeShipping = (() => {
   /**
    * Calcula o frete para um CEP informado.
    *
-   * @param {string} cep  - CEP do cliente (com ou sem máscara)
-   * @param {number} [orderTotal=0]  - total do pedido (para frete grátis)
+   * @param {string} cep
+   * @param {number} [orderTotal=0]
    * @returns {Promise<ShippingResult>}
    *
    * @typedef {Object} ShippingResult
-   * @property {boolean} success
-   * @property {number}  fee          - valor do frete em R$
-   * @property {boolean} isFree       - true se frete grátis
-   * @property {string}  zone         - nome da zona
-   * @property {string}  city         - cidade encontrada
-   * @property {string}  address      - logradouro (do ViaCEP)
-   * @property {string}  neighborhood - bairro
-   * @property {number|null} distanceKm   - km (quando via Google)
-   * @property {number|null} durationMin  - tempo estimado em minutos
-   * @property {string}  message      - texto amigável para exibição
-   * @property {string}  error        - mensagem de erro (se !success)
+   * @property {boolean}     success
+   * @property {number}      fee          - valor do frete em R$
+   * @property {boolean}     isFree
+   * @property {string}      zone         - faixa de distância
+   * @property {string}      city
+   * @property {string}      address
+   * @property {string}      neighborhood
+   * @property {number|null} distanceKm   - distância estimada por rota
+   * @property {string}      message      - texto para exibição
+   * @property {string}      error        - mensagem de erro (se !success)
    */
   async function calculate(cep, orderTotal = 0) {
-    const cepNum = parseCEP(cep);
+    const digits = cep.replace(/\D/g, '');
 
-    if (!cepNum) {
-      return {
-        success: false,
-        error: 'CEP inválido. Verifique e tente novamente.',
-        fee: 0,
-      };
+    if (digits.length !== 8) {
+      return { success: false, error: 'CEP inválido. Verifique e tente novamente.', fee: 0 };
     }
 
-    // 1. Verifica frete grátis
+    // Frete grátis
     if (FREE_SHIPPING_THRESHOLD > 0 && orderTotal >= FREE_SHIPPING_THRESHOLD) {
       return {
-        success: true,
-        fee: 0,
-        isFree: true,
+        success: true, fee: 0, isFree: true,
         zone: 'Frete Grátis',
         message: `Frete grátis para pedidos acima de R$ ${FREE_SHIPPING_THRESHOLD}!`,
         distanceKm: null,
-        durationMin: null,
       };
     }
 
-    // 2. Busca na tabela de faixas de CEP (Ponta Grossa)
-    const zoneEntry = lookupCepZone(cepNum);
-
-    if (zoneEntry) {
-      return {
-        success: true,
-        fee: Math.max(BASE_FEE, zoneEntry.fee),
-        isFree: false,
-        zone: zoneEntry.zone,
-        message: `Entrega para ${zoneEntry.zone}`,
-        distanceKm: null,
-        durationMin: null,
-      };
+    // 1. Valida o CEP e obtém endereço
+    const viaCep = await fetchViaCEP(digits);
+    if (!viaCep) {
+      return { success: false, error: 'CEP não encontrado. Verifique e tente novamente.', fee: 0 };
     }
 
-    // 3. CEP fora da tabela: consulta ViaCEP para validar + Google Distance
-    const viaCepData = await fetchViaCEP(cep);
-
-    if (!viaCepData) {
+    // 2. Geocodifica para coordenadas
+    const coords = await geocodeCEP(digits, viaCep);
+    if (!coords) {
       return {
         success: false,
-        error: 'Não conseguimos localizar esse CEP. Verifique e tente novamente.',
+        error: 'Não conseguimos calcular a distância para esse CEP. Entre em contato com a loja.',
         fee: 0,
       };
     }
 
-    const isInPG = viaCepData.localidade?.toLowerCase().includes('ponta grossa');
+    // 3. Calcula distância linha reta × fator de rota
+    const straightKm  = haversineKm(STORE_LAT, STORE_LNG, coords.lat, coords.lng);
+    const estimatedKm = parseFloat((straightKm * ROAD_FACTOR).toFixed(2));
 
-    // Tenta Google Distance Matrix se a chave estiver configurada
-    const googleResult = await fetchGoogleDistance(cep);
-
-    if (googleResult) {
-      const fee = isInPG
-        ? calcOutOfCityFee(googleResult.distanceKm * 0.5) // PG mas longe — reduz
-        : calcOutOfCityFee(googleResult.distanceKm);
-
-      return {
-        success: true,
-        fee: parseFloat(fee.toFixed(2)),
-        isFree: false,
-        zone: isInPG ? 'Ponta Grossa — Zona Especial' : `Fora de PG (${viaCepData.localidade}/${viaCepData.uf})`,
-        city: viaCepData.localidade,
-        address: viaCepData.logradouro,
-        neighborhood: viaCepData.bairro,
-        distanceKm:  googleResult.distanceKm,
-        durationMin: googleResult.durationMin,
-        message: `Distância: ~${Math.round(googleResult.distanceKm)} km — Tempo estimado: ${googleResult.durationMin} min`,
-      };
-    }
-
-    // 4. Fallback: taxa fixa para fora da área mapeada
-    const fallbackFee = isInPG ? 18.00 : OUT_OF_CITY_BASE_FEE;
+    // 4. Busca taxa na tabela
+    const maxFaixa = DISTANCE_FEES[DISTANCE_FEES.length - 1];
+    const entry    = lookupFee(estimatedKm);
+    const acimaMax = estimatedKm > maxFaixa.maxKm;
 
     return {
-      success: true,
-      fee: fallbackFee,
-      isFree: false,
-      zone: isInPG ? 'Ponta Grossa — Faixa não mapeada' : `${viaCepData.localidade}/${viaCepData.uf}`,
-      city: viaCepData.localidade,
-      address: viaCepData.logradouro,
-      neighborhood: viaCepData.bairro,
-      distanceKm: null,
-      durationMin: null,
-      message: isInPG
-        ? 'Endereço em Ponta Grossa — taxa padrão aplicada.'
-        : 'Entrega fora de Ponta Grossa — consulte disponibilidade.',
+      success:      true,
+      fee:          entry.fee,
+      isFree:       false,
+      zone:         acimaMax ? `Acima de ${maxFaixa.maxKm} km` : `Até ${entry.maxKm} km`,
+      city:         viaCep.localidade ?? '',
+      address:      viaCep.logradouro ?? '',
+      neighborhood: viaCep.bairro     ?? '',
+      distanceKm:   estimatedKm,
+      durationMin:  null,
+      message:      `Distância estimada: ~${estimatedKm} km`,
     };
   }
 
   /**
-   * Preenche campos de endereço automaticamente com dados do ViaCEP.
+   * Preenche campos de endereço com dados do ViaCEP.
    * @param {string} cep
-   * @returns {Promise<{logradouro:string, bairro:string, localidade:string, uf:string}|null>}
+   * @returns {Promise<object|null>}
    */
   async function autofillAddress(cep) {
     return fetchViaCEP(cep);
   }
 
-  /** Permite injetar a chave da Google Maps API dinamicamente */
-  function setGoogleMapsKey(key) {
-    GOOGLE_MAPS_API_KEY = key;
-  }
+  /** Mantido por compatibilidade — não utilizado nesta implementação. */
+  function setGoogleMapsKey(_key) {}
 
-  return {
-    calculate,
-    autofillAddress,
-    setGoogleMapsKey,
-  };
+  return { calculate, autofillAddress, setGoogleMapsKey };
 
 })();
