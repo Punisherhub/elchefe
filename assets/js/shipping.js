@@ -3,11 +3,12 @@
  *
  * Calcula o frete com base na distância real entre a loja e o CEP do cliente.
  *
- * ESTRATÉGIA:
- *  1. ViaCEP  → valida o CEP e obtém o endereço completo.
- *  2. Nominatim (OpenStreetMap) → geocodifica o CEP para coordenadas (lat/lng).
- *  3. Haversine → distância em linha reta × fator de rota (1.35) ≈ km percorridos.
- *  4. Tabela de faixas de km → determina a taxa de entrega.
+ * ESTRATÉGIA (cascata):
+ *  1. BrasilAPI v2  → valida o CEP, retorna endereço + coordenadas (quando disponível).
+ *  2. ViaCEP        → fallback de endereço quando BrasilAPI falha.
+ *  3. Nominatim     → geocodifica pelo endereço quando BrasilAPI não tem coordenadas.
+ *  4. Haversine     → distância em linha reta × fator de rota (1.35) ≈ km percorridos.
+ *  5. Tabela de faixas de km → determina a taxa de entrega.
  *
  * Coordenadas da loja:
  *   Lat: -25.0669528, Lng: -50.1756617
@@ -33,11 +34,6 @@ const ElChefeShipping = (() => {
   const FREE_SHIPPING_THRESHOLD = 0;
 
   // ── Tabela de faixas de distância ────────────────────────────────────────
-  //
-  //  Cada entrada: { maxKm, fee }
-  //  O sistema percorre a tabela de cima para baixo e aplica a taxa da
-  //  primeira faixa onde distância estimada ≤ maxKm.
-  //  CEPs acima do maior maxKm ficam fora da área de entrega.
 
   const DISTANCE_FEES = [
     { maxKm: 1.0, fee:  5.00 },
@@ -50,14 +46,6 @@ const ElChefeShipping = (() => {
 
   // ── Funções Internas ─────────────────────────────────────────────────────
 
-  /**
-   * Fórmula de Haversine — distância em km entre dois pontos geográficos.
-   * @param {number} lat1
-   * @param {number} lng1
-   * @param {number} lat2
-   * @param {number} lng2
-   * @returns {number} km
-   */
   function haversineKm(lat1, lng1, lat2, lng2) {
     const R    = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -69,12 +57,6 @@ const ElChefeShipping = (() => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  /**
-   * Busca a taxa na tabela conforme a distância estimada.
-   * Acima da última faixa, aplica a taxa máxima (R$ 15,00 fixo).
-   * @param {number} km
-   * @returns {{ fee: number, maxKm: number }}
-   */
   function lookupFee(km) {
     for (const entry of DISTANCE_FEES) {
       if (km <= entry.maxKm) return entry;
@@ -83,12 +65,40 @@ const ElChefeShipping = (() => {
   }
 
   /**
-   * Consulta ViaCEP para obter endereço a partir de um CEP.
-   * @param {string} cep
+   * Busca endereço + coordenadas via BrasilAPI v2.
+   * Retorna objeto normalizado com campos comuns ao ViaCEP + lat/lng.
+   * @param {string} digits  - 8 dígitos
    * @returns {Promise<object|null>}
    */
-  async function fetchViaCEP(cep) {
-    const digits = cep.replace(/\D/g, '');
+  async function fetchBrasilAPI(digits) {
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cep/v2/${digits}`);
+      if (!res.ok) return null;
+      const d = await res.json();
+      if (d.errors || d.message) return null;
+
+      const lat = d.location?.coordinates?.latitude;
+      const lng = d.location?.coordinates?.longitude;
+
+      return {
+        logradouro: d.street        ?? '',
+        bairro:     d.neighborhood  ?? '',
+        localidade: d.city          ?? '',
+        uf:         d.state         ?? '',
+        lat: lat ? parseFloat(lat) : null,
+        lng: lng ? parseFloat(lng) : null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Busca endereço via ViaCEP (fallback).
+   * @param {string} digits
+   * @returns {Promise<object|null>}
+   */
+  async function fetchViaCEP(digits) {
     try {
       const res  = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
       if (!res.ok) return null;
@@ -100,62 +110,46 @@ const ElChefeShipping = (() => {
   }
 
   /**
-   * Geocodifica um CEP usando a API do Nominatim (OpenStreetMap).
-   * Tenta primeiro pelo CEP puro; se falhar, tenta pelo endereço completo.
-   * @param {string} cep       - 8 dígitos
-   * @param {object} [viaCep]  - dados do ViaCEP para fallback de busca
+   * Geocodifica via Nominatim usando dados de endereço do ViaCEP/BrasilAPI.
+   * Tenta queries progressivamente menos específicas.
+   * @param {object} addr  - { logradouro, bairro, localidade, uf }
    * @returns {Promise<{ lat: number, lng: number }|null>}
    */
-  async function geocodeCEP(cep, viaCep) {
-    const digits  = cep.replace(/\D/g, '');
-    const headers = { 'User-Agent': 'ElChefe-Delivery/1.0 (contato@elchefe.com.br)' };
+  async function geocodeAddress(addr) {
+    const rua    = addr.logradouro ?? '';
+    const bairro = addr.bairro     ?? '';
+    const cidade = addr.localidade ?? '';
+    const uf     = addr.uf         ?? '';
 
     async function nominatim(query) {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-      const res  = await fetch(url, { headers });
-      const data = await res.json();
-      if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      try {
+        const url  = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&accept-language=pt-BR`;
+        const res  = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      } catch {}
       return null;
     }
 
-    // Tentativa 1: CEP direto (funciona para poucos CEPs BR, mas tenta)
-    try {
-      const url  = `https://nominatim.openstreetmap.org/search?postalcode=${digits}&country=BR&format=json&limit=1`;
-      const res  = await fetch(url, { headers });
-      const data = await res.json();
-      if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    } catch {}
-
-    const cidade = viaCep?.localidade ?? '';
-    const uf     = viaCep?.uf         ?? '';
-    const rua    = viaCep?.logradouro ?? '';
-    const bairro = viaCep?.bairro     ?? '';
-
-    // Tentativa 2: rua + bairro + cidade (mais preciso — usa dados do ViaCEP)
+    // Tentativa 1: rua + bairro + cidade
     if (rua && bairro && cidade) {
-      try {
-        const r = await nominatim(`${rua}, ${bairro}, ${cidade}, ${uf}, Brasil`);
-        if (r) return r;
-      } catch {}
+      const r = await nominatim(`${rua}, ${bairro}, ${cidade}, ${uf}, Brasil`);
+      if (r) return r;
     }
 
-    // Tentativa 3: rua + cidade
+    // Tentativa 2: rua + cidade
     if (rua && cidade) {
-      try {
-        const r = await nominatim(`${rua}, ${cidade}, ${uf}, Brasil`);
-        if (r) return r;
-      } catch {}
+      const r = await nominatim(`${rua}, ${cidade}, ${uf}, Brasil`);
+      if (r) return r;
     }
 
-    // Tentativa 4: bairro + cidade (sem rua — ainda melhor que centróide da cidade)
+    // Tentativa 3: bairro + cidade (melhor que centróide da cidade)
     if (bairro && cidade) {
-      try {
-        const r = await nominatim(`${bairro}, ${cidade}, ${uf}, Brasil`);
-        if (r) return r;
-      } catch {}
+      const r = await nominatim(`${bairro}, ${cidade}, ${uf}, Brasil`);
+      if (r) return r;
     }
 
-    // Sem resultado — não cai no centróide da cidade para evitar distância fixa
     return null;
   }
 
@@ -163,22 +157,9 @@ const ElChefeShipping = (() => {
 
   /**
    * Calcula o frete para um CEP informado.
-   *
    * @param {string} cep
    * @param {number} [orderTotal=0]
    * @returns {Promise<ShippingResult>}
-   *
-   * @typedef {Object} ShippingResult
-   * @property {boolean}     success
-   * @property {number}      fee          - valor do frete em R$
-   * @property {boolean}     isFree
-   * @property {string}      zone         - faixa de distância
-   * @property {string}      city
-   * @property {string}      address
-   * @property {string}      neighborhood
-   * @property {number|null} distanceKm   - distância estimada por rota
-   * @property {string}      message      - texto para exibição
-   * @property {string}      error        - mensagem de erro (se !success)
    */
   async function calculate(cep, orderTotal = 0) {
     const digits = cep.replace(/\D/g, '');
@@ -187,7 +168,6 @@ const ElChefeShipping = (() => {
       return { success: false, error: 'CEP inválido. Verifique e tente novamente.', fee: 0 };
     }
 
-    // Frete grátis
     if (FREE_SHIPPING_THRESHOLD > 0 && orderTotal >= FREE_SHIPPING_THRESHOLD) {
       return {
         success: true, fee: 0, isFree: true,
@@ -197,14 +177,23 @@ const ElChefeShipping = (() => {
       };
     }
 
-    // 1. Valida o CEP e obtém endereço
-    const viaCep = await fetchViaCEP(digits);
-    if (!viaCep) {
+    // 1. BrasilAPI v2 — endereço + coordenadas diretas
+    const brasilApi = await fetchBrasilAPI(digits);
+
+    // 2. Fallback de endereço para ViaCEP se BrasilAPI falhar
+    const addr = brasilApi ?? await fetchViaCEP(digits);
+    if (!addr) {
       return { success: false, error: 'CEP não encontrado. Verifique e tente novamente.', fee: 0 };
     }
 
-    // 2. Geocodifica para coordenadas
-    const coords = await geocodeCEP(digits, viaCep);
+    // 3. Coordenadas: usa BrasilAPI diretamente ou geocodifica via Nominatim
+    let coords = null;
+    if (brasilApi?.lat && brasilApi?.lng) {
+      coords = { lat: brasilApi.lat, lng: brasilApi.lng };
+    } else {
+      coords = await geocodeAddress(addr);
+    }
+
     if (!coords) {
       return {
         success: false,
@@ -213,11 +202,11 @@ const ElChefeShipping = (() => {
       };
     }
 
-    // 3. Calcula distância linha reta × fator de rota
+    // 4. Haversine × fator de rota
     const straightKm  = haversineKm(STORE_LAT, STORE_LNG, coords.lat, coords.lng);
     const estimatedKm = parseFloat((straightKm * ROAD_FACTOR).toFixed(2));
 
-    // 4. Busca taxa na tabela
+    // 5. Taxa pela tabela
     const maxFaixa = DISTANCE_FEES[DISTANCE_FEES.length - 1];
     const entry    = lookupFee(estimatedKm);
     const acimaMax = estimatedKm > maxFaixa.maxKm;
@@ -227,25 +216,22 @@ const ElChefeShipping = (() => {
       fee:          entry.fee,
       isFree:       false,
       zone:         acimaMax ? `Acima de ${maxFaixa.maxKm} km` : `Até ${entry.maxKm} km`,
-      city:         viaCep.localidade ?? '',
-      address:      viaCep.logradouro ?? '',
-      neighborhood: viaCep.bairro     ?? '',
+      city:         addr.localidade ?? '',
+      address:      addr.logradouro ?? '',
+      neighborhood: addr.bairro     ?? '',
       distanceKm:   estimatedKm,
       durationMin:  null,
       message:      `Distância estimada: ~${estimatedKm} km`,
     };
   }
 
-  /**
-   * Preenche campos de endereço com dados do ViaCEP.
-   * @param {string} cep
-   * @returns {Promise<object|null>}
-   */
   async function autofillAddress(cep) {
-    return fetchViaCEP(cep);
+    const digits = cep.replace(/\D/g, '');
+    const brasilApi = await fetchBrasilAPI(digits);
+    if (brasilApi) return brasilApi;
+    return fetchViaCEP(digits);
   }
 
-  /** Mantido por compatibilidade — não utilizado nesta implementação. */
   function setGoogleMapsKey(_key) {}
 
   return { calculate, autofillAddress, setGoogleMapsKey };
