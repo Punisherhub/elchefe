@@ -10,8 +10,8 @@
  *  4. Tabela de faixas de km → determina a taxa de entrega.
  *
  * Coordenadas da loja:
- *   Lat: -25.0952, Lng: -50.1622
- *   (João Rabelo Coutinho 2560, Ponta Grossa - PR)
+ *   Lat: -25.0669528, Lng: -50.1756617
+ *   (Av. João Rabello Coutinho 2560, Boa Vista, Ponta Grossa - PR, CEP 84071-150)
  */
 
 'use strict';
@@ -20,8 +20,8 @@ const ElChefeShipping = (() => {
 
   // ── Configuração ─────────────────────────────────────────────────────────
 
-  const STORE_LAT = -25.0952;
-  const STORE_LNG = -50.1622;
+  const STORE_LAT = -25.0669528;
+  const STORE_LNG = -50.1756617;
 
   /**
    * Fator de correção de linha reta → distância por rota.

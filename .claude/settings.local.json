@@ -11,7 +11,8 @@
       "mcp__BD_PDV__query",
       "Bash(find /c/xampp/htdocs/ElChefe -maxdepth 2 -type f -name *.md)",
       "Bash(git -C /c/xampp/htdocs/ElChefe worktree remove .claude/worktrees/agent-a134db57 --force)",
-      "Bash(git -C /c/xampp/htdocs/ElChefe branch -D worktree-agent-a134db57)"
+      "Bash(git -C /c/xampp/htdocs/ElChefe branch -D worktree-agent-a134db57)",
+      "Bash(curl:*)"
     ]
   }
 }
