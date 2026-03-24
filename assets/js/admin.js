@@ -483,21 +483,213 @@ const ElChefeAdmin = (() => {
       btn.setAttribute('aria-selected', btn.dataset.tab === tabName);
     });
 
-    // Mostra/oculta seções
-    const mainSection = $('product-table-body')?.closest('.table-wrap');
-    const toolbar     = document.querySelector('.toolbar');
-    const pdvSection  = $('section-pdv-images');
+    // Todas as seções gerenciadas por tab
+    const mainSection      = $('product-table-body')?.closest('.table-wrap');
+    const toolbar          = document.querySelector('.toolbar');
+    const pdvSection       = $('section-pdv-images');
+    const variantesSection = $('section-variantes');
+
+    // Oculta tudo primeiro
+    if (toolbar)          toolbar.hidden          = true;
+    if (mainSection)      mainSection.hidden      = true;
+    if (pdvSection)       pdvSection.hidden       = true;
+    if (variantesSection) variantesSection.hidden = true;
 
     if (tabName === 'produtos') {
       if (toolbar)     toolbar.hidden     = false;
       if (mainSection) mainSection.hidden = false;
-      if (pdvSection)  pdvSection.hidden  = true;
+    } else if (tabName === 'variantes') {
+      if (variantesSection) variantesSection.hidden = false;
+      loadVariantsSection();
     } else {
-      if (toolbar)     toolbar.hidden     = true;
-      if (mainSection) mainSection.hidden = true;
-      if (pdvSection)  pdvSection.hidden  = false;
+      // pdv-images (e qualquer aba futura)
+      if (pdvSection) pdvSection.hidden = false;
       loadPdvImagesSection();
     }
+  }
+
+  // ── Variantes ─────────────────────────────────────────────────────────────────
+
+  let variantsProductsCache = [];
+
+  /**
+   * Carrega produtos para a aba de variantes e renderiza o grid.
+   */
+  async function loadVariantsSection() {
+    const grid = $('variants-grid');
+    if (!grid) return;
+
+    if (variantsProductsCache.length > 0) {
+      renderVariantsGrid($('variant-search')?.value.trim() || '');
+      return;
+    }
+
+    grid.innerHTML = `<p class="pdv-img-loading">Carregando produtos...</p>`;
+
+    try {
+      if (typeof ElChefePDV !== 'undefined') {
+        const resultado         = await ElChefePDV.fetchProdutos();
+        variantsProductsCache   = resultado.produtos;
+      } else if (typeof ELCHEFE_PRODUCTS !== 'undefined') {
+        variantsProductsCache   = ELCHEFE_PRODUCTS;
+      } else {
+        grid.innerHTML = `<p class="pdv-img-loading">Nenhuma fonte de produtos disponível.</p>`;
+        return;
+      }
+    } catch (_) {
+      grid.innerHTML = `<p class="pdv-img-loading">Erro ao carregar produtos.</p>`;
+      return;
+    }
+
+    renderVariantsGrid('');
+  }
+
+  /**
+   * Renderiza o grid de cards de variantes, filtrado pelo texto de busca.
+   * @param {string} filter
+   */
+  function renderVariantsGrid(filter) {
+    const grid = $('variants-grid');
+    if (!grid) return;
+
+    const q = (filter || '').toLowerCase();
+    const filtered = variantsProductsCache.filter(p =>
+      !q || p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<p class="pdv-img-loading">Nenhum produto encontrado.</p>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(p => renderVariantCard(p)).join('');
+  }
+
+  /**
+   * Gera o HTML de um card de produto na aba de variantes.
+   * @param {Object} product
+   * @returns {string}
+   */
+  function renderVariantCard(product) {
+    const variants  = ElChefeVariants.getForProduct(product.id);
+    const tagsHTML  = variants.map(v => `
+      <span class="variant-tag">
+        ${esc(v)}
+        <button
+          class="variant-tag__remove"
+          data-action="remove-variant"
+          data-product-id="${esc(product.id)}"
+          data-variant="${esc(v)}"
+          aria-label="Remover variante ${esc(v)}"
+          title="Remover"
+        >&times;</button>
+      </span>`).join('');
+
+    return `
+      <div class="variant-card" data-product-id="${esc(product.id)}">
+        <div class="variant-card__header">
+          ${esc(product.name)}
+          <span class="variant-card__category">${esc(product.category || '')}</span>
+        </div>
+        <div class="variant-tags">${tagsHTML}</div>
+        <div class="variant-add-row">
+          <input
+            type="text"
+            class="variant-input"
+            data-product-id="${esc(product.id)}"
+            placeholder="Ex: Morango"
+            maxlength="60"
+            aria-label="Nome da nova variante para ${esc(product.name)}"
+          >
+          <button
+            class="btn-primary btn-sm btn--add-variant"
+            data-action="add-variant"
+            data-product-id="${esc(product.id)}"
+          >+ Adicionar</button>
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Adiciona uma variante ao produto e atualiza o card.
+   * @param {string} productId
+   * @param {string} variantName
+   */
+  function handleAddVariant(productId, variantName) {
+    const name = variantName.trim();
+    if (!name) {
+      showToast('Informe o nome do sabor/variante.', 'error');
+      return;
+    }
+
+    try {
+      const current = ElChefeVariants.getForProduct(productId);
+      ElChefeVariants.setForProduct(productId, [...current, name]);
+      refreshVariantCard(productId);
+      showToast(`Variante "${name}" adicionada!`);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  /**
+   * Remove uma variante do produto e atualiza o card.
+   * @param {string} productId
+   * @param {string} variantName
+   */
+  function handleRemoveVariant(productId, variantName) {
+    const current = ElChefeVariants.getForProduct(productId);
+    const updated = current.filter(v => v !== variantName);
+    ElChefeVariants.setForProduct(productId, updated);
+    refreshVariantCard(productId);
+    showToast(`Variante "${variantName}" removida.`, 'info');
+  }
+
+  /**
+   * Re-renderiza apenas o card de um produto específico.
+   * @param {string} productId
+   */
+  function refreshVariantCard(productId) {
+    const card    = document.querySelector(`.variant-card[data-product-id="${productId}"]`);
+    const product = variantsProductsCache.find(p => String(p.id) === String(productId));
+    if (!card || !product) return;
+    card.outerHTML = renderVariantCard(product);
+  }
+
+  /**
+   * Exporta o mapa de variantes como arquivo JSON.
+   */
+  function exportVariants() {
+    const json  = ElChefeVariants.exportJSON();
+    const blob  = new Blob([json], { type: 'application/json' });
+    const url   = URL.createObjectURL(blob);
+    const date  = new Date().toISOString().slice(0, 10);
+    const a     = Object.assign(document.createElement('a'), {
+      href:     url,
+      download: `elchefe-variantes-${date}.json`,
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Variantes exportadas!');
+  }
+
+  /**
+   * Importa variantes a partir de um arquivo JSON.
+   * @param {File} file
+   */
+  function importVariants(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const count = ElChefeVariants.importJSON(e.target.result);
+        variantsProductsCache = [];
+        loadVariantsSection();
+        showToast(`${count} produto(s) com variantes importado(s)!`);
+      } catch (err) {
+        showToast(`Erro ao importar: ${err.message}`, 'error');
+      }
+    };
+    reader.readAsText(file);
   }
 
   // ── PDV Images ────────────────────────────────────────────────────────────────
@@ -811,6 +1003,51 @@ const ElChefeAdmin = (() => {
     $('btn-reload-pdv').addEventListener('click', () => {
       pdvProductsList = [];
       loadPdvImagesSection();
+    });
+
+    // ─ Variantes — export / import
+    $('btn-export-variants')?.addEventListener('click', exportVariants);
+    $('import-variants-file')?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) importVariants(file);
+      e.target.value = '';
+    });
+
+    // ─ Variantes — busca
+    $('variant-search')?.addEventListener('input', e => {
+      renderVariantsGrid(e.target.value.trim());
+    });
+
+    // ─ Variantes — delegação no grid (adicionar e remover variantes)
+    $('variants-grid')?.addEventListener('click', e => {
+      const removeBtn = e.target.closest('[data-action="remove-variant"]');
+      const addBtn    = e.target.closest('[data-action="add-variant"]');
+
+      if (removeBtn) {
+        handleRemoveVariant(removeBtn.dataset.productId, removeBtn.dataset.variant);
+      }
+
+      if (addBtn) {
+        const productId = addBtn.dataset.productId;
+        const card      = addBtn.closest('.variant-card');
+        const input     = card?.querySelector('.variant-input');
+        if (input) {
+          handleAddVariant(productId, input.value);
+          input.value = '';
+          input.focus();
+        }
+      }
+    });
+
+    // ─ Variantes — adicionar via Enter no input
+    $('variants-grid')?.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('.variant-input');
+      if (!input) return;
+      e.preventDefault();
+      const productId = input.dataset.productId;
+      handleAddVariant(productId, input.value);
+      input.value = '';
     });
   }
 

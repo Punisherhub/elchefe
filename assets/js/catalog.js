@@ -25,13 +25,18 @@ const ElChefeCatalog = (() => {
   let allProducts   = [];
   let activeFilter  = 'all';
 
+  // Produto aguardando seleção de variante no modal
+  let pendingProduct = null;
+
   // ── Referências DOM ──────────────────────────────────────────────────────
 
-  const grid       = () => document.getElementById('products-grid');
-  const promoGrid  = () => document.getElementById('promo-grid');
-  const emptyState = () => document.getElementById('empty-state');
-  const filterBar  = () => document.getElementById('filter-bar');
-  const filterBtns = () => document.querySelectorAll('.filter-btn');
+  const grid         = () => document.getElementById('products-grid');
+  const promoGrid    = () => document.getElementById('promo-grid');
+  const emptyState   = () => document.getElementById('empty-state');
+  const filterBar    = () => document.getElementById('filter-bar');
+  const filterBtns   = () => document.querySelectorAll('.filter-btn');
+  const variantModal = () => document.getElementById('variant-modal');
+  const variantList  = () => document.getElementById('variant-list');
 
   // ── Webflow CMS Normalizer ────────────────────────────────────────────────
   //
@@ -146,15 +151,18 @@ const ElChefeCatalog = (() => {
       ? `<p class="product-card__stock-warn">⚠ Restam ${product.stock} unidade(s)</p>`
       : '';
 
-    // Botão
+    // Botão — se tem variantes, o label indica a seleção
+    const hasVariants = typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product.id);
+    const btnLabel = hasVariants ? 'Escolher Sabor' : 'Adicionar ao Carrinho';
+
     const btnHTML = isOutOfStock
       ? `<button class="btn btn--ghost btn--full" disabled>Esgotado</button>`
       : `<button
            class="btn btn--primary btn--full"
            data-product-id="${product.id}"
-           aria-label="Adicionar ${product.name} ao carrinho"
+           aria-label="${btnLabel} ${product.name} ao carrinho"
          >
-           Adicionar ao Carrinho
+           ${btnLabel}
          </button>`;
 
     return `
@@ -239,6 +247,52 @@ const ElChefeCatalog = (() => {
     renderCatalog();
   }
 
+  // ── Modal de Variante ────────────────────────────────────────────────────
+
+  /**
+   * Abre o modal de seleção de variante para um produto.
+   * @param {Object} product
+   */
+  function openVariantModal(product) {
+    const modal  = variantModal();
+    const list   = variantList();
+    const title  = document.getElementById('variant-modal-title');
+
+    if (!modal || !list) return;
+
+    pendingProduct = product;
+
+    if (title) title.textContent = `Escolha o sabor — ${product.name}`;
+
+    const variants = ElChefeVariants.getForProduct(product.id);
+
+    list.innerHTML = variants.map(v => `
+      <li role="listitem">
+        <button
+          class="variant-btn"
+          data-variant="${v}"
+          aria-label="Sabor ${v}"
+        >${v}</button>
+      </li>`).join('');
+
+    modal.removeAttribute('hidden');
+    document.body.classList.add('modal-open');
+
+    // Foco no primeiro botão de variante
+    setTimeout(() => list.querySelector('.variant-btn')?.focus(), 50);
+  }
+
+  /**
+   * Fecha o modal de seleção de variante.
+   */
+  function closeVariantModal() {
+    const modal = variantModal();
+    if (!modal) return;
+    modal.setAttribute('hidden', '');
+    document.body.classList.remove('modal-open');
+    pendingProduct = null;
+  }
+
   // ── Eventos ───────────────────────────────────────────────────────────────
 
   function bindEvents() {
@@ -258,12 +312,51 @@ const ElChefeCatalog = (() => {
         const product   = allProducts.find(p => p.id === productId);
         if (!product) return;
 
+        // Se o produto tem variantes, abre o modal de seleção
+        if (typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product.id)) {
+          openVariantModal(product);
+          return;
+        }
+
         const result = ElChefeCart.add(product);
         ElChefeUtils.showToast(
           result.message,
           result.success ? 'success' : 'error'
         );
       });
+    });
+
+    // Modal de variante — clique em uma variante
+    variantList()?.addEventListener('click', e => {
+      const btn = e.target.closest('.variant-btn');
+      if (!btn || !pendingProduct) return;
+
+      const variantName = btn.dataset.variant;
+      const productWithVariant = Object.assign({}, pendingProduct, { variant: variantName });
+
+      const result = ElChefeCart.add(productWithVariant);
+      closeVariantModal();
+      ElChefeUtils.showToast(
+        result.success
+          ? `"${pendingProduct.name} (${variantName})" adicionado ao carrinho!`
+          : result.message,
+        result.success ? 'success' : 'error'
+      );
+    });
+
+    // Modal de variante — botão fechar
+    document.getElementById('variant-modal-close')?.addEventListener('click', closeVariantModal);
+
+    // Modal de variante — clique no overlay (fora do modal)
+    variantModal()?.addEventListener('click', e => {
+      if (e.target === variantModal()) closeVariantModal();
+    });
+
+    // Modal de variante — ESC
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && variantModal() && !variantModal().hidden) {
+        closeVariantModal();
+      }
     });
   }
 

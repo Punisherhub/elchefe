@@ -785,6 +785,93 @@ body.modal-open { overflow: hidden; }
   font-style: italic;
 }
 
+/* ── Aba Variantes ────────────────────────────────────────── */
+
+.variants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.variant-card {
+  border: 1px solid var(--a-border);
+  border-radius: var(--a-radius);
+  padding: 1rem;
+  background: var(--a-surface);
+}
+
+.variant-card__header {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--a-text);
+}
+
+.variant-card__category {
+  font-size: 0.8rem;
+  color: var(--a-muted);
+  margin-left: 0.5rem;
+  font-weight: 400;
+}
+
+.variant-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  min-height: 32px;
+}
+
+.variant-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: #f0f0f0;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--a-text);
+}
+
+.variant-tag__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--a-muted);
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.variant-tag__remove:hover {
+  color: var(--a-red);
+}
+
+.variant-add-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.variant-add-row input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--a-border);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--a-text);
+}
+
+.variant-add-row input:focus {
+  outline: 2px solid var(--a-blue);
+  outline-offset: -2px;
+}
+
+.variant-add-row .btn--add-variant {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 /* ── Responsive ───────────────────────────────────────────── */
 
 @media (max-width: 768px) {

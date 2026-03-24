@@ -4,6 +4,10 @@
  * Gerenciamento de carrinho: adicionar, remover, atualizar quantidade.
  * Estado persistido em localStorage para sobreviver a recargas.
  *
+ * Suporte a variantes (sabores): itens com o mesmo product.id mas variante
+ * diferente são tratados como entradas separadas no carrinho.
+ * A chave de identificação é: id (sem variante) ou "id|variante" (com variante).
+ *
  * Emite eventos customizados no `document` para comunicação entre módulos:
  *   - 'cart:updated'   → sempre que o carrinho muda
  *   - 'cart:opened'    → quando o drawer é aberto
@@ -34,6 +38,7 @@ const ElChefeCart = (() => {
    * @property {number} price       - preço unitário (com desconto se promo)
    * @property {number} quantity
    * @property {number} stock       - estoque disponível no momento da adição
+   * @property {string|null} variant - sabor/variante selecionado, ou null
    */
 
   // ── Persistência ─────────────────────────────────────────────────────────
@@ -58,18 +63,32 @@ const ElChefeCart = (() => {
   }
 
   /**
+   * Gera a chave única de um item no carrinho.
+   * Itens com variante diferente do mesmo produto são entradas distintas.
+   * @param {CartItem} item
+   * @returns {string}
+   */
+  function cartKey(item) {
+    return item.variant ? `${item.id}|${item.variant}` : String(item.id);
+  }
+
+  /**
    * Retorna o índice do item no array, ou -1.
    * @param {string} id
+   * @param {string|null} [variant]
    * @returns {number}
    */
-  function findIndex(id) {
-    return items.findIndex(i => i.id === id);
+  function findIndex(id, variant) {
+    const key = variant ? `${id}|${variant}` : String(id);
+    return items.findIndex(i => cartKey(i) === key);
   }
 
   // ── API Pública ──────────────────────────────────────────────────────────
 
   /**
    * Adiciona um produto ao carrinho, validando estoque.
+   * Produtos com variante são tratados como entradas distintas.
+   * A validação de estoque considera o total de TODAS as variantes do mesmo produto.
    * @param {Object} product  - objeto do catálogo (ver products-data.js)
    * @param {number} [qty=1]
    * @returns {{ success: boolean, message: string }}
@@ -79,20 +98,23 @@ const ElChefeCart = (() => {
       return { success: false, message: `"${product.name}" está esgotado.` };
     }
 
-    const idx = findIndex(product.id);
+    const variant = product.variant || null;
+    const idx     = findIndex(product.id, variant);
+
+    // Soma todas as variantes do mesmo produto para validar o estoque total
+    const totalInCart = items
+      .filter(i => String(i.id) === String(product.id))
+      .reduce((sum, i) => sum + i.quantity, 0);
+
+    if (totalInCart + qty > product.stock) {
+      return {
+        success: false,
+        message: `Só temos ${product.stock} unidade(s) de "${product.name}" em estoque.`,
+      };
+    }
 
     if (idx >= 0) {
-      const currentQty = items[idx].quantity;
-      const newQty     = currentQty + qty;
-
-      if (newQty > product.stock) {
-        return {
-          success: false,
-          message: `Só temos ${product.stock} unidade(s) de "${product.name}" em estoque.`,
-        };
-      }
-
-      items[idx].quantity = newQty;
+      items[idx].quantity += qty;
     } else {
       const price = product.isPromo && product.priceOriginal
         ? product.price           // preço promocional
@@ -107,6 +129,7 @@ const ElChefeCart = (() => {
         price,
         quantity: qty,
         stock:    product.stock,
+        variant:  variant,
       });
     }
 
@@ -118,9 +141,10 @@ const ElChefeCart = (() => {
   /**
    * Remove um item do carrinho.
    * @param {string} id
+   * @param {string|null} [variant]
    */
-  function remove(id) {
-    const idx = findIndex(id);
+  function remove(id, variant) {
+    const idx = findIndex(id, variant || null);
     if (idx < 0) return;
     const name = items[idx].name;
     items.splice(idx, 1);
@@ -133,15 +157,16 @@ const ElChefeCart = (() => {
    * Atualiza a quantidade de um item. Se qty <= 0, remove o item.
    * Respeita o limite de estoque.
    * @param {string} id
+   * @param {string|null} variant
    * @param {number} qty
    * @returns {{ success: boolean, message?: string }}
    */
-  function updateQty(id, qty) {
-    const idx = findIndex(id);
+  function updateQty(id, variant, qty) {
+    const idx = findIndex(id, variant || null);
     if (idx < 0) return { success: false };
 
     if (qty <= 0) {
-      remove(id);
+      remove(id, variant || null);
       return { success: true };
     }
 
@@ -201,6 +226,13 @@ const ElChefeCart = (() => {
   /** true se o carrinho está vazio */
   function isEmpty() { return items.length === 0; }
 
+  /**
+   * Retorna a chave única de um item (util para app.js/checkout.js).
+   * @param {CartItem} item
+   * @returns {string}
+   */
+  function getCartKey(item) { return cartKey(item); }
+
   // ── Inicialização ────────────────────────────────────────────────────────
 
   load();
@@ -217,6 +249,7 @@ const ElChefeCart = (() => {
     getTotal,
     getShipping,
     isEmpty,
+    getCartKey,
   };
 
 })();

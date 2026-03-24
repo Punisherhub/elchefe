@@ -226,8 +226,9 @@ const ElChefeCheckout = (() => {
     text += `\n📦 ITENS DO PEDIDO\n`;
     text += `─────────────────────────\n`;
     items.forEach(item => {
-      const sub = ElChefeUtils.formatCurrency(item.price * item.quantity);
-      text += `${item.emoji} ${item.name}\n`;
+      const sub         = ElChefeUtils.formatCurrency(item.price * item.quantity);
+      const displayName = item.variant ? `${item.name} (${item.variant})` : item.name;
+      text += `${item.emoji} ${displayName}\n`;
       text += `   ${item.quantity}x ${ElChefeUtils.formatCurrency(item.price)} = ${sub}\n`;
     });
 
@@ -258,6 +259,7 @@ const ElChefeCheckout = (() => {
       items:       ElChefeCart.getAll().map(i => ({
         id:       i.id,
         name:     i.name,
+        variant:  i.variant || null,
         quantity: i.quantity,
         price:    i.price,
         subtotal: parseFloat((i.price * i.quantity).toFixed(2)),

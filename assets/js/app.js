@@ -32,29 +32,35 @@ const ElChefeApp = (() => {
 
     const subtotal = item.price * item.quantity;
 
+    // Exibe o nome com a variante entre parênteses, se houver
+    const displayName = item.variant ? `${item.name} (${item.variant})` : item.name;
+    const variantAttr = item.variant || '';
+
     return `
       <li class="cart-item" data-item-id="${item.id}">
         ${imgHTML}
         <div class="cart-item__info">
-          <p class="cart-item__name">${item.name}</p>
+          <p class="cart-item__name">${displayName}</p>
           <p class="cart-item__price-unit">${ElChefeUtils.formatCurrency(item.price)} / un.</p>
           <div class="cart-item__qty">
             <button
               class="qty-btn"
               data-action="decrease"
               data-id="${item.id}"
-              aria-label="Diminuir quantidade de ${item.name}"
+              data-variant="${variantAttr}"
+              aria-label="Diminuir quantidade de ${displayName}"
             >−</button>
             <span class="qty-value" aria-label="Quantidade: ${item.quantity}">${item.quantity}</span>
             <button
               class="qty-btn"
               data-action="increase"
               data-id="${item.id}"
-              aria-label="Aumentar quantidade de ${item.name}"
+              data-variant="${variantAttr}"
+              aria-label="Aumentar quantidade de ${displayName}"
             >+</button>
           </div>
           <div class="cart-item__remove">
-            <button class="btn btn--danger" data-action="remove" data-id="${item.id}" aria-label="Remover ${item.name}">
+            <button class="btn btn--danger" data-action="remove" data-id="${item.id}" data-variant="${variantAttr}" aria-label="Remover ${displayName}">
               Remover
             </button>
           </div>
@@ -138,28 +144,32 @@ const ElChefeApp = (() => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
 
-      const id     = btn.dataset.id;
-      const action = btn.dataset.action;
+      const id      = btn.dataset.id;
+      const variant = btn.dataset.variant || null;
+      const action  = btn.dataset.action;
 
       switch (action) {
         case 'remove': {
-          const name = ElChefeCart.remove(id);
+          const name = ElChefeCart.remove(id, variant);
           if (name) ElChefeUtils.showToast(`"${name}" removido do carrinho.`, 'info');
           break;
         }
         case 'increase': {
-          const item = ElChefeCart.getAll().find(i => i.id === id);
+          // Localiza o item correto usando id + variant
+          const cartKey = ElChefeCart.getCartKey({ id, variant });
+          const item = ElChefeCart.getAll().find(i => ElChefeCart.getCartKey(i) === cartKey);
           if (!item) break;
-          const result = ElChefeCart.updateQty(id, item.quantity + 1);
+          const result = ElChefeCart.updateQty(id, variant, item.quantity + 1);
           if (!result.success && result.message) {
             ElChefeUtils.showToast(result.message, 'error');
           }
           break;
         }
         case 'decrease': {
-          const item = ElChefeCart.getAll().find(i => i.id === id);
+          const cartKey = ElChefeCart.getCartKey({ id, variant });
+          const item = ElChefeCart.getAll().find(i => ElChefeCart.getCartKey(i) === cartKey);
           if (!item) break;
-          ElChefeCart.updateQty(id, item.quantity - 1);
+          ElChefeCart.updateQty(id, variant, item.quantity - 1);
           break;
         }
       }
