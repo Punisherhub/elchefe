@@ -163,9 +163,7 @@ const ElChefeCheckout = (() => {
 
       // Info contextual
       const ic = infoCep();
-      if (ic) {
-        ic.textContent = result.message ?? result.zone;
-      }
+      if (ic) ic.textContent = '';
 
       // Auto-preenche cidade/bairro se ViaCEP retornou
       if (result.city && result.address) {
