@@ -612,6 +612,11 @@ const ElChefeAdmin = (() => {
       const map = loadPdvImageMap();
       map[String(productId)] = json.secure_url;
       savePdvImageMap(map);
+
+      // Atualiza cache em memória para re-render imediato
+      const cached = pdvProductsList.find(x => String(x.id) === String(productId));
+      if (cached) cached.image = json.secure_url;
+
       renderPdvImageGrid();
       showToast('Imagem salva!');
     } catch (err) {
@@ -625,6 +630,11 @@ const ElChefeAdmin = (() => {
     const map = loadPdvImageMap();
     map[String(productId)] = url.trim();
     savePdvImageMap(map);
+
+    // Atualiza cache em memória para re-render imediato
+    const cached = pdvProductsList.find(x => String(x.id) === String(productId));
+    if (cached) cached.image = url.trim();
+
     renderPdvImageGrid();
     showToast('Imagem salva!');
   }
@@ -632,13 +642,19 @@ const ElChefeAdmin = (() => {
   function handlePdvImageRemove(productId) {
     const p = pdvProductsList.find(x => String(x.id) === String(productId));
     if (!confirm(`Remover imagem de "${p?.name ?? productId}"?`)) return;
+
+    // Limpa do mapa persistido
     const map = loadPdvImageMap();
     delete map[String(productId)];
     savePdvImageMap(map);
+
+    // Limpa também no cache em memória para o re-render refletir imediatamente
+    if (p) p.image = null;
+
     renderPdvImageGrid();
     showToast('Imagem removida.', 'info');
 
-    // Remove do Cloudinary via proxy no servidor
+    // Tenta remover do Cloudinary via proxy — falha silenciosa se não houver servidor Express
     fetch('/api/cloudinary/delete', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
