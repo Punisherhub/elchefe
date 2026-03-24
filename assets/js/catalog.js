@@ -28,6 +28,9 @@ const ElChefeCatalog = (() => {
   // Produto aguardando seleção de variante no modal
   let pendingProduct = null;
 
+  // Seleções atuais do cliente no modal: { nomeGrupo: opcaoEscolhida }
+  let pendingSelecoes = {};
+
   // ── Referências DOM ──────────────────────────────────────────────────────
 
   const grid         = () => document.getElementById('products-grid');
@@ -152,8 +155,8 @@ const ElChefeCatalog = (() => {
       : '';
 
     // Botão — se tem variantes, o label indica a seleção
-    const hasVariants = typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product.id);
-    const btnLabel = hasVariants ? 'Escolher Sabor' : 'Adicionar ao Carrinho';
+    const hasVariants = typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product);
+    const btnLabel = hasVariants ? 'Escolher Opções' : 'Adicionar ao Carrinho';
 
     const btnHTML = isOutOfStock
       ? `<button class="btn btn--ghost btn--full" disabled>Esgotado</button>`
@@ -251,35 +254,66 @@ const ElChefeCatalog = (() => {
 
   /**
    * Abre o modal de seleção de variante para um produto.
+   * Renderiza um grupo de opções por vez (ex: Sabor, depois Tamanho).
    * @param {Object} product
    */
   function openVariantModal(product) {
-    const modal  = variantModal();
-    const list   = variantList();
-    const title  = document.getElementById('variant-modal-title');
+    const modal = variantModal();
+    const list  = variantList();
+    const title = document.getElementById('variant-modal-title');
 
     if (!modal || !list) return;
 
-    pendingProduct = product;
+    pendingProduct  = product;
+    pendingSelecoes = {};
 
-    if (title) title.textContent = `Escolha o sabor — ${product.name}`;
+    if (title) title.textContent = product.name;
 
-    const variants = ElChefeVariants.getForProduct(product.id);
-
-    list.innerHTML = variants.map(v => `
-      <li role="listitem">
-        <button
-          class="variant-btn"
-          data-variant="${v}"
-          aria-label="Sabor ${v}"
-        >${v}</button>
-      </li>`).join('');
+    renderVariantGroups();
 
     modal.removeAttribute('hidden');
     document.body.classList.add('modal-open');
 
-    // Foco no primeiro botão de variante
     setTimeout(() => list.querySelector('.variant-btn')?.focus(), 50);
+  }
+
+  /**
+   * Renderiza os grupos de variantes no modal com base nas seleções atuais.
+   */
+  function renderVariantGroups() {
+    const list   = variantList();
+    const grupos = ElChefeVariants.getGroups(pendingProduct);
+    if (!list) return;
+
+    list.innerHTML = grupos.map(grupo => `
+      <li class="variant-group" role="listitem">
+        <p class="variant-group__label">${grupo.nome}</p>
+        <div class="variant-group__options">
+          ${grupo.opcoes.map(opcao => {
+            const selecionada = pendingSelecoes[grupo.nome] === opcao;
+            return `<button
+              class="variant-btn${selecionada ? ' variant-btn--selected' : ''}"
+              data-group="${grupo.nome}"
+              data-opcao="${opcao}"
+              aria-pressed="${selecionada}"
+            >${opcao}</button>`;
+          }).join('')}
+        </div>
+      </li>`).join('');
+
+    // Botão de confirmar — aparece apenas quando todas as seleções foram feitas
+    const completo = ElChefeVariants.isSelectionComplete(pendingSelecoes, grupos);
+    const variantStr = completo
+      ? ElChefeVariants.buildVariantString(pendingSelecoes, grupos)
+      : '';
+
+    list.insertAdjacentHTML('afterend', `
+      <div id="variant-confirm-wrap">
+        ${completo ? `
+          <button id="btn-variant-confirm" class="btn btn--primary btn--full">
+            Adicionar ao Carrinho — ${variantStr}
+          </button>` : ''}
+      </div>`);
   }
 
   /**
@@ -290,7 +324,8 @@ const ElChefeCatalog = (() => {
     if (!modal) return;
     modal.setAttribute('hidden', '');
     document.body.classList.remove('modal-open');
-    pendingProduct = null;
+    pendingProduct  = null;
+    pendingSelecoes = {};
   }
 
   // ── Eventos ───────────────────────────────────────────────────────────────
@@ -313,7 +348,7 @@ const ElChefeCatalog = (() => {
         if (!product) return;
 
         // Se o produto tem variantes, abre o modal de seleção
-        if (typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product.id)) {
+        if (typeof ElChefeVariants !== 'undefined' && ElChefeVariants.hasVariants(product)) {
           openVariantModal(product);
           return;
         }
@@ -326,31 +361,45 @@ const ElChefeCatalog = (() => {
       });
     });
 
-    // Modal de variante — clique em uma variante
+    // Modal de variante — seleção de opção em um grupo
     variantList()?.addEventListener('click', e => {
       const btn = e.target.closest('.variant-btn');
       if (!btn || !pendingProduct) return;
 
-      const variantName = btn.dataset.variant;
-      const productWithVariant = Object.assign({}, pendingProduct, { variant: variantName });
+      const grupo = btn.dataset.group;
+      const opcao = btn.dataset.opcao;
+      pendingSelecoes[grupo] = opcao;
 
-      const result = ElChefeCart.add(productWithVariant);
-      closeVariantModal();
-      ElChefeUtils.showToast(
-        result.success
-          ? `"${pendingProduct.name} (${variantName})" adicionado ao carrinho!`
-          : result.message,
-        result.success ? 'success' : 'error'
-      );
+      // Re-renderiza grupos para refletir seleção e mostrar/esconder botão confirmar
+      document.getElementById('variant-confirm-wrap')?.remove();
+      renderVariantGroups();
+    });
+
+    // Modal de variante — confirmar seleção e adicionar ao carrinho
+    variantModal()?.addEventListener('click', e => {
+      // Botão confirmar (delegação pois é inserido dinamicamente)
+      if (e.target.id === 'btn-variant-confirm' && pendingProduct) {
+        const grupos     = ElChefeVariants.getGroups(pendingProduct);
+        const variantStr = ElChefeVariants.buildVariantString(pendingSelecoes, grupos);
+        const product    = Object.assign({}, pendingProduct, { variant: variantStr });
+
+        const result = ElChefeCart.add(product);
+        closeVariantModal();
+        ElChefeUtils.showToast(
+          result.success
+            ? `"${pendingProduct.name} (${variantStr})" adicionado!`
+            : result.message,
+          result.success ? 'success' : 'error'
+        );
+        return;
+      }
+
+      // Clique no overlay (fora do dialog) fecha o modal
+      if (e.target === variantModal()) closeVariantModal();
     });
 
     // Modal de variante — botão fechar
     document.getElementById('variant-modal-close')?.addEventListener('click', closeVariantModal);
-
-    // Modal de variante — clique no overlay (fora do modal)
-    variantModal()?.addEventListener('click', e => {
-      if (e.target === variantModal()) closeVariantModal();
-    });
 
     // Modal de variante — ESC
     document.addEventListener('keydown', e => {

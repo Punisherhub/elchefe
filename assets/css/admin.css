@@ -872,6 +872,63 @@ body.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 
+/* Bloco de grupo dentro do card de variantes */
+.variant-group-block {
+  border: 1px solid var(--a-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background: #fafafa;
+}
+
+.variant-group-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.variant-group-block__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--a-text);
+}
+
+/* Linha para adicionar novo grupo (dois inputs + botão) */
+.variant-add-group-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.variant-add-group-row input {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--a-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--a-text);
+}
+
+.variant-add-group-row input:focus {
+  outline: 2px solid var(--a-blue);
+  outline-offset: -2px;
+}
+
+/* Botão salvar no PDV */
+.variant-btn-save {
+  width: 100%;
+  margin-top: 0.75rem;
+  background: var(--a-green, #1a7f4b);
+  color: #fff;
+}
+
+.variant-btn-save:hover {
+  background: #155f38;
+}
+
 /* ── Responsive ───────────────────────────────────────────── */
 
 @media (max-width: 768px) {

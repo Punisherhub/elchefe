@@ -115,6 +115,8 @@ const ElChefePDV = (() => {
       stock:         parseInt(p.estoque_disponivel ?? 0, 10),
       image:         p.foto_url ?? null,
       emoji:         emojiForCategory(categoria),
+      // Variantes: array de grupos { nome, opcoes[] } vindo do PDV
+      variantes:     Array.isArray(p.variantes) ? p.variantes : [],
     };
   }
 
@@ -357,6 +359,38 @@ const ElChefePDV = (() => {
   }
 
   /**
+   * Salva as variantes de um produto no PDV.
+   * @param {string} productId
+   * @param {Array<{nome: string, opcoes: string[]}>} variantes
+   * @returns {Promise<{ sucesso: boolean, mensagem: string }>}
+   */
+  async function salvarVariantes(productId, variantes) {
+    if (!isConfigured()) {
+      return { sucesso: false, mensagem: 'PDV não configurado.' };
+    }
+
+    try {
+      const url = `${cfg().PDV_BASE_URL}/api/site/produtos/${productId}/variantes`;
+      const res = await fetchWithTimeout(url, {
+        method:  'PUT',
+        headers: headers(),
+        body:    JSON.stringify({ variantes }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.mensagem ?? `HTTP ${res.status}`);
+      }
+
+      return { sucesso: true, mensagem: 'Variantes salvas com sucesso!' };
+    } catch (err) {
+      const motivo = err.name === 'AbortError' ? 'Tempo limite excedido.' : err.message;
+      return { sucesso: false, mensagem: `Erro ao salvar variantes: ${motivo}` };
+    }
+  }
+
+  /**
    * Retorna true se o PDV está configurado (API Key preenchida).
    * Usado pelos outros módulos para ajustar comportamento.
    */
@@ -367,6 +401,7 @@ const ElChefePDV = (() => {
   return {
     fetchProdutos,
     enviarPedido,
+    salvarVariantes,
     pdvAtivo,
   };
 

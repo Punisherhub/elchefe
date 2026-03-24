@@ -566,24 +566,68 @@ const ElChefeAdmin = (() => {
   }
 
   /**
+   * Retorna os grupos de variantes de um produto do cache local.
+   * @param {string} productId
+   * @returns {Array<{nome: string, opcoes: string[]}>}
+   */
+  function getVariantGroups(productId) {
+    const product = variantsProductsCache.find(p => String(p.id) === String(productId));
+    return Array.isArray(product?.variantes) ? product.variantes : [];
+  }
+
+  /**
    * Gera o HTML de um card de produto na aba de variantes.
+   * Exibe grupos (ex: Sabor, Tamanho) com suas opções.
    * @param {Object} product
    * @returns {string}
    */
   function renderVariantCard(product) {
-    const variants  = ElChefeVariants.getForProduct(product.id);
-    const tagsHTML  = variants.map(v => `
-      <span class="variant-tag">
-        ${esc(v)}
-        <button
-          class="variant-tag__remove"
-          data-action="remove-variant"
-          data-product-id="${esc(product.id)}"
-          data-variant="${esc(v)}"
-          aria-label="Remover variante ${esc(v)}"
-          title="Remover"
-        >&times;</button>
-      </span>`).join('');
+    const grupos = Array.isArray(product.variantes) ? product.variantes : [];
+
+    const gruposHTML = grupos.map((grupo, gi) => `
+      <div class="variant-group-block" data-group-index="${gi}">
+        <div class="variant-group-block__header">
+          <span class="variant-group-block__name">${esc(grupo.nome)}</span>
+          <button
+            class="variant-tag__remove"
+            data-action="remove-group"
+            data-product-id="${esc(product.id)}"
+            data-group-index="${gi}"
+            title="Remover grupo ${esc(grupo.nome)}"
+          >&times; grupo</button>
+        </div>
+        <div class="variant-tags">
+          ${grupo.opcoes.map(op => `
+            <span class="variant-tag">
+              ${esc(op)}
+              <button
+                class="variant-tag__remove"
+                data-action="remove-opcao"
+                data-product-id="${esc(product.id)}"
+                data-group-index="${gi}"
+                data-opcao="${esc(op)}"
+                title="Remover opção ${esc(op)}"
+              >&times;</button>
+            </span>`).join('')}
+        </div>
+        <div class="variant-add-row">
+          <input
+            type="text"
+            class="variant-input"
+            placeholder="Nova opção (ex: GG)"
+            maxlength="60"
+            data-product-id="${esc(product.id)}"
+            data-group-index="${gi}"
+            aria-label="Nova opção para ${esc(grupo.nome)}"
+          >
+          <button
+            class="btn-primary btn-sm btn--add-variant"
+            data-action="add-opcao"
+            data-product-id="${esc(product.id)}"
+            data-group-index="${gi}"
+          >+ Opção</button>
+        </div>
+      </div>`).join('');
 
     return `
       <div class="variant-card" data-product-id="${esc(product.id)}">
@@ -591,58 +635,147 @@ const ElChefeAdmin = (() => {
           ${esc(product.name)}
           <span class="variant-card__category">${esc(product.category || '')}</span>
         </div>
-        <div class="variant-tags">${tagsHTML}</div>
-        <div class="variant-add-row">
+        ${gruposHTML}
+        <div class="variant-add-group-row">
           <input
             type="text"
-            class="variant-input"
-            data-product-id="${esc(product.id)}"
-            placeholder="Ex: Morango"
+            class="variant-input variant-input--group-name"
+            placeholder="Nome do grupo (ex: Sabor)"
             maxlength="60"
-            aria-label="Nome da nova variante para ${esc(product.name)}"
+            data-product-id="${esc(product.id)}"
+            aria-label="Nome do novo grupo de variantes"
+          >
+          <input
+            type="text"
+            class="variant-input variant-input--first-opcao"
+            placeholder="Primeira opção (ex: Limão)"
+            maxlength="60"
+            data-product-id="${esc(product.id)}"
+            aria-label="Primeira opção do novo grupo"
           >
           <button
             class="btn-primary btn-sm btn--add-variant"
-            data-action="add-variant"
+            data-action="add-group"
             data-product-id="${esc(product.id)}"
-          >+ Adicionar</button>
+          >+ Grupo</button>
         </div>
+        <button
+          class="btn-primary btn-sm variant-btn-save"
+          data-action="save-variants"
+          data-product-id="${esc(product.id)}"
+        >💾 Salvar no PDV</button>
       </div>`;
   }
 
   /**
-   * Adiciona uma variante ao produto e atualiza o card.
+   * Atualiza os grupos de variantes no cache local e re-renderiza o card.
    * @param {string} productId
-   * @param {string} variantName
+   * @param {Array<{nome: string, opcoes: string[]}>} grupos
    */
-  function handleAddVariant(productId, variantName) {
-    const name = variantName.trim();
-    if (!name) {
-      showToast('Informe o nome do sabor/variante.', 'error');
-      return;
-    }
-
-    try {
-      const current = ElChefeVariants.getForProduct(productId);
-      ElChefeVariants.setForProduct(productId, [...current, name]);
-      refreshVariantCard(productId);
-      showToast(`Variante "${name}" adicionada!`);
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+  function updateVariantCache(productId, grupos) {
+    const idx = variantsProductsCache.findIndex(p => String(p.id) === String(productId));
+    if (idx < 0) return;
+    variantsProductsCache[idx] = { ...variantsProductsCache[idx], variantes: grupos };
+    refreshVariantCard(productId);
   }
 
   /**
-   * Remove uma variante do produto e atualiza o card.
+   * Adiciona um novo grupo de variantes ao produto.
    * @param {string} productId
-   * @param {string} variantName
+   * @param {string} nomeGrupo
+   * @param {string} primeiraOpcao
    */
-  function handleRemoveVariant(productId, variantName) {
-    const current = ElChefeVariants.getForProduct(productId);
-    const updated = current.filter(v => v !== variantName);
-    ElChefeVariants.setForProduct(productId, updated);
-    refreshVariantCard(productId);
-    showToast(`Variante "${variantName}" removida.`, 'info');
+  function handleAddGroup(productId, nomeGrupo, primeiraOpcao) {
+    const nome  = nomeGrupo.trim();
+    const opcao = primeiraOpcao.trim();
+
+    if (!nome) { showToast('Informe o nome do grupo (ex: Sabor, Tamanho).', 'error'); return; }
+    if (!opcao) { showToast('Informe ao menos uma opção para o grupo.', 'error'); return; }
+
+    const grupos = getVariantGroups(productId);
+    if (grupos.some(g => g.nome.toLowerCase() === nome.toLowerCase())) {
+      showToast(`Grupo "${nome}" já existe.`, 'error');
+      return;
+    }
+
+    updateVariantCache(productId, [...grupos, { nome, opcoes: [opcao] }]);
+  }
+
+  /**
+   * Remove um grupo inteiro de variantes.
+   * @param {string} productId
+   * @param {number} groupIndex
+   */
+  function handleRemoveGroup(productId, groupIndex) {
+    const grupos  = getVariantGroups(productId);
+    const updated = grupos.filter((_, i) => i !== groupIndex);
+    updateVariantCache(productId, updated);
+  }
+
+  /**
+   * Adiciona uma opção a um grupo existente.
+   * @param {string} productId
+   * @param {number} groupIndex
+   * @param {string} opcao
+   */
+  function handleAddOpcao(productId, groupIndex, opcao) {
+    const nome = opcao.trim();
+    if (!nome) { showToast('Informe o nome da opção.', 'error'); return; }
+
+    const grupos = getVariantGroups(productId);
+    if (!grupos[groupIndex]) return;
+
+    if (grupos[groupIndex].opcoes.includes(nome)) {
+      showToast(`Opção "${nome}" já existe neste grupo.`, 'error');
+      return;
+    }
+
+    const updated = grupos.map((g, i) =>
+      i === groupIndex ? { ...g, opcoes: [...g.opcoes, nome] } : g
+    );
+    updateVariantCache(productId, updated);
+  }
+
+  /**
+   * Remove uma opção de um grupo.
+   * @param {string} productId
+   * @param {number} groupIndex
+   * @param {string} opcao
+   */
+  function handleRemoveOpcao(productId, groupIndex, opcao) {
+    const grupos  = getVariantGroups(productId);
+    if (!grupos[groupIndex]) return;
+
+    const novasOpcoes = grupos[groupIndex].opcoes.filter(o => o !== opcao);
+    let updated;
+
+    if (novasOpcoes.length === 0) {
+      // Remove o grupo inteiro se ficou sem opções
+      updated = grupos.filter((_, i) => i !== groupIndex);
+      showToast(`Grupo "${grupos[groupIndex].nome}" removido (sem opções restantes).`, 'info');
+    } else {
+      updated = grupos.map((g, i) =>
+        i === groupIndex ? { ...g, opcoes: novasOpcoes } : g
+      );
+    }
+    updateVariantCache(productId, updated);
+  }
+
+  /**
+   * Salva as variantes do produto no PDV via API.
+   * @param {string} productId
+   */
+  async function handleSaveVariants(productId) {
+    const grupos = getVariantGroups(productId);
+    const btn    = document.querySelector(`.variant-card[data-product-id="${productId}"] [data-action="save-variants"]`);
+
+    if (btn) btn.disabled = true;
+
+    const result = await ElChefePDV.salvarVariantes(productId, grupos);
+
+    if (btn) btn.disabled = false;
+
+    showToast(result.mensagem, result.sucesso ? 'success' : 'error');
   }
 
   /**
@@ -654,42 +787,7 @@ const ElChefeAdmin = (() => {
     const product = variantsProductsCache.find(p => String(p.id) === String(productId));
     if (!card || !product) return;
     card.outerHTML = renderVariantCard(product);
-  }
-
-  /**
-   * Exporta o mapa de variantes como arquivo JSON.
-   */
-  function exportVariants() {
-    const json  = ElChefeVariants.exportJSON();
-    const blob  = new Blob([json], { type: 'application/json' });
-    const url   = URL.createObjectURL(blob);
-    const date  = new Date().toISOString().slice(0, 10);
-    const a     = Object.assign(document.createElement('a'), {
-      href:     url,
-      download: `elchefe-variantes-${date}.json`,
-    });
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Variantes exportadas!');
-  }
-
-  /**
-   * Importa variantes a partir de um arquivo JSON.
-   * @param {File} file
-   */
-  function importVariants(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const count = ElChefeVariants.importJSON(e.target.result);
-        variantsProductsCache = [];
-        loadVariantsSection();
-        showToast(`${count} produto(s) com variantes importado(s)!`);
-      } catch (err) {
-        showToast(`Erro ao importar: ${err.message}`, 'error');
-      }
-    };
-    reader.readAsText(file);
+    // Re-bind delegação já está no grid, não precisa rebind
   }
 
   // ── PDV Images ────────────────────────────────────────────────────────────────
@@ -1005,48 +1103,58 @@ const ElChefeAdmin = (() => {
       loadPdvImagesSection();
     });
 
-    // ─ Variantes — export / import
-    $('btn-export-variants')?.addEventListener('click', exportVariants);
-    $('import-variants-file')?.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (file) importVariants(file);
-      e.target.value = '';
-    });
-
     // ─ Variantes — busca
     $('variant-search')?.addEventListener('input', e => {
       renderVariantsGrid(e.target.value.trim());
     });
 
-    // ─ Variantes — delegação no grid (adicionar e remover variantes)
+    // ─ Variantes — delegação de cliques no grid
     $('variants-grid')?.addEventListener('click', e => {
-      const removeBtn = e.target.closest('[data-action="remove-variant"]');
-      const addBtn    = e.target.closest('[data-action="add-variant"]');
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
 
-      if (removeBtn) {
-        handleRemoveVariant(removeBtn.dataset.productId, removeBtn.dataset.variant);
-      }
+      const action    = btn.dataset.action;
+      const productId = btn.dataset.productId;
+      const groupIdx  = parseInt(btn.dataset.groupIndex ?? '-1', 10);
+      const card      = btn.closest('.variant-card');
 
-      if (addBtn) {
-        const productId = addBtn.dataset.productId;
-        const card      = addBtn.closest('.variant-card');
-        const input     = card?.querySelector('.variant-input');
-        if (input) {
-          handleAddVariant(productId, input.value);
-          input.value = '';
-          input.focus();
+      switch (action) {
+        case 'add-group': {
+          const nameInput  = card?.querySelector('.variant-input--group-name');
+          const opcaoInput = card?.querySelector('.variant-input--first-opcao');
+          handleAddGroup(productId, nameInput?.value ?? '', opcaoInput?.value ?? '');
+          if (nameInput)  nameInput.value  = '';
+          if (opcaoInput) opcaoInput.value = '';
+          break;
         }
+        case 'remove-group':
+          handleRemoveGroup(productId, groupIdx);
+          break;
+        case 'add-opcao': {
+          const groupBlock = card?.querySelector(`.variant-group-block[data-group-index="${groupIdx}"]`);
+          const input      = groupBlock?.querySelector('.variant-input');
+          handleAddOpcao(productId, groupIdx, input?.value ?? '');
+          if (input) { input.value = ''; input.focus(); }
+          break;
+        }
+        case 'remove-opcao':
+          handleRemoveOpcao(productId, groupIdx, btn.dataset.opcao);
+          break;
+        case 'save-variants':
+          handleSaveVariants(productId);
+          break;
       }
     });
 
-    // ─ Variantes — adicionar via Enter no input
+    // ─ Variantes — adicionar opção via Enter no input de opção
     $('variants-grid')?.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
       const input = e.target.closest('.variant-input');
-      if (!input) return;
+      if (!input || !input.dataset.groupIndex) return;
       e.preventDefault();
       const productId = input.dataset.productId;
-      handleAddVariant(productId, input.value);
+      const groupIdx  = parseInt(input.dataset.groupIndex, 10);
+      handleAddOpcao(productId, groupIdx, input.value);
       input.value = '';
     });
   }
