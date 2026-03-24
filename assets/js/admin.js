@@ -643,9 +643,9 @@ const ElChefeAdmin = (() => {
     const p = pdvProductsList.find(x => String(x.id) === String(productId));
     if (!confirm(`Remover imagem de "${p?.name ?? productId}"?`)) return;
 
-    // Limpa do mapa persistido
+    // Marca como removida explicitamente (null = sem imagem, sem fallback Cloudinary)
     const map = loadPdvImageMap();
-    delete map[String(productId)];
+    map[String(productId)] = null;
     savePdvImageMap(map);
 
     // Limpa também no cache em memória para o re-render refletir imediatamente

@@ -170,12 +170,18 @@ const ElChefePDV = (() => {
     } catch (_) {}
 
     return produtos.map(p => {
-      const cloudUrl = cloudName
+      const key            = String(p.id);
+      const hasEntry       = Object.prototype.hasOwnProperty.call(localMap, key);
+      const mappedUrl      = localMap[key]; // null = removida explicitamente
+
+      // cloudUrl só é usado se o admin nunca tocou nessa imagem (sem entrada no mapa)
+      const cloudUrl = (!hasEntry && cloudName)
         ? `https://res.cloudinary.com/${cloudName}/image/upload/elchefe-pdv-${p.id}`
         : null;
+
       return {
         ...p,
-        image: p.image ?? localMap[String(p.id)] ?? cloudUrl,
+        image: p.image ?? mappedUrl ?? cloudUrl,
       };
     });
   }
