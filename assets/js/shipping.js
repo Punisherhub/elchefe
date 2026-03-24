@@ -110,31 +110,52 @@ const ElChefeShipping = (() => {
     const digits  = cep.replace(/\D/g, '');
     const headers = { 'User-Agent': 'ElChefe-Delivery/1.0 (contato@elchefe.com.br)' };
 
-    // Tentativa 1: busca direta pelo CEP
-    try {
-      const url = `https://nominatim.openstreetmap.org/search`
-        + `?postalcode=${digits}&country=BR&format=json&limit=1`;
+    async function nominatim(query) {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
       const res  = await fetch(url, { headers });
       const data = await res.json();
-      if (data.length) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-      }
-    } catch { /* segue para próxima tentativa */ }
-
-    // Tentativa 2: busca por cidade + estado (quando o CEP não retorna resultado)
-    if (viaCep?.localidade && viaCep?.uf) {
-      try {
-        const query = encodeURIComponent(`${viaCep.localidade}, ${viaCep.uf}, Brasil`);
-        const url   = `https://nominatim.openstreetmap.org/search`
-          + `?q=${query}&format=json&limit=1`;
-        const res  = await fetch(url, { headers });
-        const data = await res.json();
-        if (data.length) {
-          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        }
-      } catch { /* geocodificação falhou */ }
+      if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      return null;
     }
 
+    // Tentativa 1: CEP direto (funciona para poucos CEPs BR, mas tenta)
+    try {
+      const url  = `https://nominatim.openstreetmap.org/search?postalcode=${digits}&country=BR&format=json&limit=1`;
+      const res  = await fetch(url, { headers });
+      const data = await res.json();
+      if (data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch {}
+
+    const cidade = viaCep?.localidade ?? '';
+    const uf     = viaCep?.uf         ?? '';
+    const rua    = viaCep?.logradouro ?? '';
+    const bairro = viaCep?.bairro     ?? '';
+
+    // Tentativa 2: rua + bairro + cidade (mais preciso — usa dados do ViaCEP)
+    if (rua && bairro && cidade) {
+      try {
+        const r = await nominatim(`${rua}, ${bairro}, ${cidade}, ${uf}, Brasil`);
+        if (r) return r;
+      } catch {}
+    }
+
+    // Tentativa 3: rua + cidade
+    if (rua && cidade) {
+      try {
+        const r = await nominatim(`${rua}, ${cidade}, ${uf}, Brasil`);
+        if (r) return r;
+      } catch {}
+    }
+
+    // Tentativa 4: bairro + cidade (sem rua — ainda melhor que centróide da cidade)
+    if (bairro && cidade) {
+      try {
+        const r = await nominatim(`${bairro}, ${cidade}, ${uf}, Brasil`);
+        if (r) return r;
+      } catch {}
+    }
+
+    // Sem resultado — não cai no centróide da cidade para evitar distância fixa
     return null;
   }
 
