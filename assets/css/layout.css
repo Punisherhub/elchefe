@@ -304,9 +304,19 @@
   padding-bottom: var(--space-4);
   margin-bottom: var(--space-8);
   scrollbar-width: none;
+  /* Permite scroll horizontal em mobile sem interferência do body */
+  -webkit-overflow-scrolling: touch;
 }
 
 .filter-bar::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  /* Sangra até a borda do viewport para maximizar área de scroll */
+  .filter-bar {
+    margin-inline: calc(-1 * var(--container-px));
+    padding-inline: var(--container-px);
+  }
+}
 
 /* ── Products Grid ────────────────────────────────────────── */
 .products-grid {

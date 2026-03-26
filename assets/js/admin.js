@@ -802,6 +802,12 @@ const ElChefeAdmin = (() => {
 
   function savePdvImageMap(map) {
     localStorage.setItem(KEY_PDV_IMAGES, JSON.stringify(map));
+    // Persiste no servidor para que todos os dispositivos vejam as imagens
+    fetch('/api/pdv-images', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(map),
+    }).catch(() => { /* falha silenciosa em dev sem servidor Express */ });
   }
 
   async function loadPdvImagesSection() {

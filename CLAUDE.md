@@ -38,10 +38,11 @@ const ElChefeModuleName = (() => {
 3. `utils.js` → `ElChefeUtils`
 4. `pdv-api.js` → `ElChefePDV`
 5. `shipping.js` → `ElChefeShipping`
-6. `cart.js` → `ElChefeCart`
-7. `catalog.js` → `ElChefeCatalog`
-8. `checkout.js` → `ElChefeCheckout`
-9. `app.js` → `ElChefeApp`
+6. `variants.js` → `ElChefeVariants`
+7. `cart.js` → `ElChefeCart`
+8. `catalog.js` → `ElChefeCatalog`
+9. `checkout.js` → `ElChefeCheckout`
+10. `app.js` → `ElChefeApp`
 
 ### Fluxo de Dados de Produtos
 
@@ -73,6 +74,16 @@ Quantidade nunca pode exceder `product.stock`; validação em `cart.js → add()
 **Step 3 — Confirmação:**
 - **Se `PDV_ENABLED`:** chama `ElChefePDV.enviarPedido(payload)` → `POST /api/site/pedido`; status 409 = estoque insuficiente.
 - **Se não:** gera link `wa.me` com guia de separação formatada em ASCII + timestamp.
+
+### Variantes de Produtos (`variants.js`)
+
+`ElChefeVariants` é um utilitário stateless (sem estado interno). As variantes chegam no campo `variantes` do produto via PDV — array de grupos `{ nome, opcoes[] }`. O módulo expõe:
+- `hasVariants(product)` — verifica se há variantes
+- `getGroups(product)` — retorna os grupos válidos
+- `buildVariantString(selecoes, grupos)` — gera string para o carrinho ex: `"Limão / M"`
+- `isSelectionComplete(selecoes, grupos)` — valida se o cliente escolheu todas as opções
+
+O resultado da seleção é armazenado como string em `cartItem.variant`.
 
 ### Cálculo de Frete (`shipping.js`)
 
@@ -113,7 +124,7 @@ Configurações do cliente em `assets/js/config.js` (`ElChefeConfig`):
 | `CLOUDINARY_UPLOAD_PRESET` | Preset de upload (sem auth) |
 | `WHATSAPP_NUMBER` | Formato: `5542XXXXXXXXX` |
 
-URLs de webhook (Make.com) estão hardcoded em `checkout.js`. Coordenadas da loja em `shipping.js`.
+URL de webhook (Make.com) e `WHATSAPP_NUMBER` são configurados diretamente em `checkout.js` (constantes no topo do arquivo) — **não** estão em `config.js`. Coordenadas da loja em `shipping.js`.
 
 ## LocalStorage — Chaves Usadas
 
@@ -136,6 +147,11 @@ Organizado em camadas em `assets/css/`:
 - `admin.css` — painel administrativo
 
 Fontes: Barlow Condensed (display), Inter (body). Cor de destaque: `#c41e3a`.
+
+## Docs de Referência
+
+- **`SETUP.md`** — guia de configuração de integrações (webhook Make.com, payload de pedido, personalização de frete por CEP)
+- **`cms-schema.md`** — schema Webflow CMS para as collections `Produtos` e `Pedidos` (campos, tipos, slugs, opções de status/pagamento)
 
 ## Deploy
 

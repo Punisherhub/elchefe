@@ -20,7 +20,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.6;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 img, picture, video, canvas, svg {

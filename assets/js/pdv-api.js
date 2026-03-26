@@ -113,7 +113,7 @@ const ElChefePDV = (() => {
       isPromo:       !!p.em_promocao,
       isFeatured:    !!(p.destaque_site ?? p.destaque),
       stock:         parseInt(p.estoque_disponivel ?? 0, 10),
-      image:         p.foto_url ?? null,
+      image:         p.foto_url ? p.foto_url.replace(/^http:\/\//, 'https://') : null,
       emoji:         emojiForCategory(categoria),
       // Variantes: array de grupos { nome, opcoes[] } vindo do PDV
       variantes:     Array.isArray(p.variantes) ? p.variantes : [],
@@ -157,19 +157,51 @@ const ElChefePDV = (() => {
 
   // ── Imagens locais para produtos do PDV ──────────────────────
 
+  // Cache do mapa de imagens para a vida da página (evita múltiplas requisições)
+  let _imageMapCache = null;
+
+  /**
+   * Carrega o mapa de imagens PDV.
+   * Prioridade: servidor Express → localStorage (fallback dev/offline).
+   * @returns {Promise<Object>}
+   */
+  async function loadImageMap() {
+    if (_imageMapCache !== null) return _imageMapCache;
+
+    // 1. Tenta buscar do servidor (compartilhado entre todos os dispositivos)
+    try {
+      const res = await fetch('/api/pdv-images');
+      if (res.ok) {
+        const serverMap = await res.json();
+        if (serverMap && typeof serverMap === 'object') {
+          _imageMapCache = serverMap;
+          return _imageMapCache;
+        }
+      }
+    } catch (_) { /* servidor não disponível (dev XAMPP) */ }
+
+    // 2. Fallback: localStorage do browser (admin na mesma máquina)
+    try {
+      const raw = localStorage.getItem('elchefe_pdv_images');
+      if (raw) {
+        _imageMapCache = JSON.parse(raw);
+        return _imageMapCache;
+      }
+    } catch (_) {}
+
+    _imageMapCache = {};
+    return _imageMapCache;
+  }
+
   /**
    * Aplica imagens do Cloudinary aos produtos do PDV.
    * Usa URL determinística baseada no public_id (elchefe-pdv-{id}).
-   * Fallback: localStorage (admin — sessão atual).
+   * Fallback: mapa do servidor → localStorage (admin — sessão atual).
    */
   async function enrichWithImages(produtos) {
     const cloudName = window.ElChefeConfig?.CLOUDINARY_CLOUD_NAME;
 
-    let localMap = {};
-    try {
-      const raw = localStorage.getItem('elchefe_pdv_images');
-      if (raw) localMap = JSON.parse(raw);
-    } catch (_) {}
+    const localMap = await loadImageMap();
 
     return produtos.map(p => {
       const key            = String(p.id);
@@ -183,7 +215,8 @@ const ElChefePDV = (() => {
 
       return {
         ...p,
-        image: p.image ?? mappedUrl ?? cloudUrl,
+        // Prioridade: imagem do admin (Cloudinary) → foto_url do PDV → URL determinística
+        image: mappedUrl ?? p.image ?? cloudUrl,
       };
     });
   }
